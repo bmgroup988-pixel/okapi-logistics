@@ -18,9 +18,15 @@ d'Okapi Logistics.
 | 4 | Wireframes interfaces agent / admin / client | ✅ Livré (v1) | [`docs/04-wireframes.md`](docs/04-wireframes.md) + [`wireframes/index.html`](wireframes/index.html) |
 | 5 | Application fonctionnelle (back-office + suivi public) | ✅ Livré (MVP) | `packages/`, `apps/` |
 | — | Manuel d'installation et de configuration | ✅ Livré | [`docs/05-manuel-installation-configuration.md`](docs/05-manuel-installation-configuration.md) |
-| 6 | Manuel d'utilisation agent | 🚧 En cours | [`docs/06-manuel-agent.md`](docs/06-manuel-agent.md) |
-| 6 | Manuel d'utilisation administration | 🚧 En cours | [`docs/07-manuel-administration.md`](docs/07-manuel-administration.md) |
-| 7 | Plan de déploiement multi-pays (FR / CN / NG) | 🚧 En cours | [`docs/08-plan-deploiement-multipays.md`](docs/08-plan-deploiement-multipays.md) |
+| 6 | Manuel d'utilisation agent | ✅ Livré | [`docs/06-manuel-agent.md`](docs/06-manuel-agent.md) |
+| 6 | Manuel d'utilisation administration | ✅ Livré | [`docs/07-manuel-administration.md`](docs/07-manuel-administration.md) |
+| 7 | Plan de déploiement multi-pays (FR / CN / NG) | ✅ Livré | [`docs/08-plan-deploiement-multipays.md`](docs/08-plan-deploiement-multipays.md) |
+
+**Tous les livrables du cahier des charges sont produits.** Les points résiduels à
+fournir par le client avant mise en production sont listés dans le
+[registre des décisions](docs/00-registre-decisions.md) (O-1 à O-6 : fournisseur SMS,
+table ville→code exhaustive, grilles tarifaires réelles, corridors exacts, régimes de
+TVA, comptes fournisseurs).
 
 **Ce dépôt contient aujourd'hui les livrables 0 à 4.** Les 15 questions ouvertes ont été
 tranchées par le client le 2026-09-03 ; voir le registre des décisions. Les documents 1 à 3
@@ -59,9 +65,10 @@ okapi-logistics/
 │   ├── 02-architecture.md
 │   ├── 03-modele-de-donnees.md
 │   ├── 04-wireframes.md
-│   ├── 05-manuel-agent.md          (à venir)
-│   ├── 05-manuel-administration.md (à venir)
-│   └── 06-plan-deploiement.md      (à venir)
+│   ├── 05-manuel-installation-configuration.md
+│   ├── 06-manuel-agent.md
+│   ├── 07-manuel-administration.md
+│   └── 08-plan-deploiement-multipays.md
 ├── db/
 │   └── schema.sql                  DDL PostgreSQL de référence
 ├── infra/
