@@ -94,6 +94,63 @@ Console MinIO : <http://localhost:9001> (`minioadmin` / `minioadmin`) — le buc
 `okapi-photos` est créé automatiquement par le service `createbucket`.
 Boîte mail de test (Mailhog) : <http://localhost:8025>.
 
+### 3.1 Mode sans Docker (PostgreSQL natif + MinIO natif)
+
+`npm run infra:up` **exige Docker**. Pour développer sans Docker, seuls deux services
+sont réellement nécessaires ; **Redis** n'est pas connecté au *runtime* dans la version
+actuelle et **Mailhog** ne sert qu'aux tests d'e-mail (non câblés).
+
+| Service | Requis ? | Alternative sans Docker |
+|---------|:--------:|-------------------------|
+| PostgreSQL | **oui** | instance PostgreSQL 16 installée localement (§3.1.1) |
+| Stockage objet (S3) | pour l'upload photo + l'archivage PDF uniquement | binaire **MinIO** lancé en natif, ou un vrai bucket S3, ou s'en passer temporairement (l'API démarre ; l'upload photo échoue sans bloquer la création de colis) |
+| Redis | non (pour l'instant) | rien |
+| Mailhog | non | rien |
+
+#### 3.1.1 PostgreSQL natif
+
+```bash
+# 1. Créer le rôle et la base (avec le superutilisateur postgres)
+psql -U postgres -c "CREATE ROLE okapi LOGIN PASSWORD 'okapi';"
+psql -U postgres -c "CREATE DATABASE okapi OWNER okapi;"
+psql -U postgres -c "ALTER ROLE okapi CREATEDB;"   # requis par `prisma migrate dev` (base fantôme)
+
+# 2. Pré-installer les extensions utilisées par 00_constraints.sql
+psql -U postgres -d okapi -c "CREATE EXTENSION IF NOT EXISTS pgcrypto; CREATE EXTENSION IF NOT EXISTS citext; CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS btree_gist;"
+```
+
+Renseigner ensuite `DATABASE_URL` dans `apps/api/.env` (et `.env` racine) :
+
+```
+DATABASE_URL=postgresql://okapi:okapi@localhost:5432/okapi?schema=public
+```
+
+Puis, **première initialisation** :
+
+```bash
+cd apps/api && npx prisma migrate dev --name init   # crée prisma/migrations/ + applique
+cd ../.. && npm run db:constraints                   # colonne générée, EXCLUDE, triggers, index trigram
+npm run db:seed                                      # référentiel + comptes de démo
+```
+
+Les fois suivantes : `npm run db:migrate` suffit.
+
+#### 3.1.2 MinIO en natif (à faire quand vous voulez les photos / PDF)
+
+1. Télécharger le binaire MinIO pour Windows depuis <https://min.io/download>.
+2. Lancer le serveur :
+
+   ```bash
+   minio.exe server C:\minio-data --console-address ":9001"
+   ```
+
+3. Ouvrir la console <http://localhost:9001> (`minioadmin` / `minioadmin`), créer le
+   bucket **`okapi-photos`**, laisser son accès **privé**.
+4. Les valeurs `S3_*` par défaut de `apps/api/.env` pointent déjà vers `http://localhost:9000`.
+
+> Pour ceux qui **ont** Docker mais ne veulent que le stockage objet :
+> `npm run infra:up:minio` démarre uniquement MinIO + la création du bucket.
+
 ### Qualité
 
 ```bash

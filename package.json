@@ -24,6 +24,7 @@
     "db:constraints": "npm run db:constraints --workspace @okapi/api",
     "db:seed": "npm run seed --workspace @okapi/api",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:up:minio": "docker compose -f infra/docker-compose.yml up -d minio createbucket",
     "infra:down": "docker compose -f infra/docker-compose.yml down"
   },
   "allowScripts": {
