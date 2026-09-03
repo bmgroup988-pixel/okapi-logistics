@@ -1,0 +1,1063 @@
+<title>Okapi Logistics Wireframes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* ============================ Tokens : 3 états de thème ============================ */
+:root{
+  --bg:#f4f4f7; --surface:#ffffff; --surface-2:#fbfbfd;
+  --ink:#23222c; --ink-mute:#6a6976; --line:#d9d9e1;
+  --wf-fill:#ececf1; --wf-fill-2:#d3d3dd; --wf-ink:#9a99a6;
+  --chrome:#170655; --chrome-ink:#eae7ff; --chrome-line:#2a1d6b;
+  --accent:#e47911; --accent-ink:#ffffff; --accent-soft:#fbe7d1;
+  --link:#1592ad;
+  --ok:#1f9d57; --ok-soft:#dcf1e5;
+  --warn:#c07700; --warn-soft:#f7ead2;
+  --err:#c0392b; --err-soft:#f6dcd9;
+  --shadow:0 1px 2px rgba(20,10,60,.06), 0 12px 32px rgba(20,10,60,.10);
+  --radius:8px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141420; --surface:#1e1d2a; --surface-2:#24222f;
+    --ink:#e9e8f0; --ink-mute:#a5a3b4; --line:#343343;
+    --wf-fill:#2b2a39; --wf-fill-2:#3c3a4d; --wf-ink:#7f7d90;
+    --chrome:#1c0c58; --chrome-ink:#e7e3ff; --chrome-line:#372a86;
+    --accent:#f0872a; --accent-ink:#1a1206; --accent-soft:#3a2a14;
+    --link:#54c4dd;
+    --ok:#3fbd77; --ok-soft:#173a29;
+    --warn:#d9973a; --warn-soft:#3a2f16;
+    --err:#e0685c; --err-soft:#3c1f1c;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141420; --surface:#1e1d2a; --surface-2:#24222f;
+  --ink:#e9e8f0; --ink-mute:#a5a3b4; --line:#343343;
+  --wf-fill:#2b2a39; --wf-fill-2:#3c3a4d; --wf-ink:#7f7d90;
+  --chrome:#1c0c58; --chrome-ink:#e7e3ff; --chrome-line:#372a86;
+  --accent:#f0872a; --accent-ink:#1a1206; --accent-soft:#3a2a14;
+  --link:#54c4dd;
+  --ok:#3fbd77; --ok-soft:#173a29;
+  --warn:#d9973a; --warn-soft:#3a2f16;
+  --err:#e0685c; --err-soft:#3c1f1c;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 16px 40px rgba(0,0,0,.45);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+button{font:inherit; color:inherit}
+a{color:var(--link)}
+
+/* ============================ Ossature du visualiseur ============================ */
+.app{display:grid; grid-template-columns:264px 1fr; grid-template-rows:auto 1fr; height:100%;
+  grid-template-areas:"head head" "rail canvas";}
+.vhead{grid-area:head; display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:10px 18px; background:var(--surface); border-bottom:1px solid var(--line);}
+.vtitle{font-weight:600; letter-spacing:.01em; white-space:nowrap}
+.vtitle b{color:var(--accent)}
+.crumb{display:flex; align-items:center; gap:8px; min-width:0}
+.sid{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace; font-size:12px;
+  font-weight:600; background:var(--accent-soft); color:var(--accent); padding:2px 7px; border-radius:5px;
+  border:1px solid color-mix(in srgb, var(--accent) 30%, transparent); white-space:nowrap}
+.crumb .txt{color:var(--ink-mute); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.nav-arrows{display:flex; gap:4px}
+.nav-arrows button{width:30px; height:30px; border-radius:6px; border:1px solid var(--line);
+  background:var(--surface-2); cursor:pointer; display:grid; place-items:center}
+.nav-arrows button:hover{border-color:var(--accent); color:var(--accent)}
+.vhead .spacer{flex:1 1 40px}
+.flowpick{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink-mute)}
+.flowpick select{font:inherit; font-size:12.5px; padding:5px 8px; border-radius:6px;
+  border:1px solid var(--line); background:var(--surface-2); color:var(--ink); max-width:230px}
+.flowstep{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--link)}
+.toggles{display:flex; gap:6px}
+.toggles button{border:1px solid var(--line); background:var(--surface-2); border-radius:6px;
+  padding:6px 10px; font-size:12.5px; cursor:pointer; display:flex; gap:6px; align-items:center}
+.toggles button[aria-pressed="true"]{background:var(--accent-soft); border-color:var(--accent); color:var(--accent)}
+
+.rail{grid-area:rail; overflow:auto; background:var(--surface); border-right:1px solid var(--line); padding:12px 10px}
+.railGroup{margin-bottom:14px}
+.railGroup h2{font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-mute);
+  margin:6px 8px 6px; font-weight:600}
+.railItem{display:flex; gap:9px; align-items:baseline; width:100%; text-align:left; cursor:pointer;
+  background:none; border:0; padding:6px 9px; border-radius:6px; color:var(--ink); line-height:1.35}
+.railItem:hover{background:var(--surface-2)}
+.railItem.active{background:var(--accent-soft); color:var(--accent)}
+.railItem .k{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--ink-mute); flex:none; width:74px}
+.railItem.active .k{color:var(--accent)}
+.railItem .t{font-size:12.5px}
+.railSelect{display:none}
+
+.canvas{grid-area:canvas; overflow:auto; padding:26px; display:flex; justify-content:center}
+.frame{width:100%; max-width:1080px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; align-self:flex-start}
+.frame.narrow{max-width:560px}
+.frame.sheet{max-width:640px}
+
+.notes{position:fixed; top:0; right:0; height:100%; width:340px; background:var(--surface);
+  border-left:1px solid var(--line); box-shadow:var(--shadow); transform:translateX(100%);
+  transition:transform .18s ease; z-index:40; display:flex; flex-direction:column}
+.notes.open{transform:none}
+.notes h3{margin:0; padding:16px 18px; border-bottom:1px solid var(--line); font-size:13px;
+  letter-spacing:.02em; display:flex; justify-content:space-between; align-items:center}
+.notes h3 button{border:0; background:none; cursor:pointer; font-size:18px; color:var(--ink-mute); line-height:1}
+.notes ul{margin:0; padding:14px 18px 24px; list-style:none; display:flex; flex-direction:column; gap:12px; overflow:auto}
+.notes li{font-size:12.5px; color:var(--ink); padding-left:14px; position:relative}
+.notes li::before{content:""; position:absolute; left:0; top:7px; width:5px; height:5px; border-radius:50%; background:var(--link)}
+.notes code{font-family:"IBM Plex Mono",monospace; font-size:11.5px; background:var(--wf-fill);
+  padding:1px 5px; border-radius:4px; color:var(--ink-mute)}
+
+@media (prefers-reduced-motion:reduce){.notes{transition:none}}
+
+/* ============================ Primitives de wireframe ============================ */
+.wf-chrome,.wf-pubframe,.wf-authframe,.wf-docframe{font-size:13px}
+.wf-bar{display:flex; align-items:center; gap:12px; background:var(--chrome); color:var(--chrome-ink);
+  padding:9px 14px; border-bottom:1px solid var(--chrome-line)}
+.wf-brand{font-weight:600; letter-spacing:.02em; white-space:nowrap}
+.wf-omnisearch{flex:1; max-width:320px; background:color-mix(in srgb,var(--chrome-ink) 14%, transparent);
+  border:1px solid var(--chrome-line); border-radius:6px; padding:6px 10px; color:var(--chrome-ink);
+  font-size:12px; opacity:.9}
+.wf-baruser{margin-left:auto; display:flex; align-items:center; gap:6px}
+.wf-tag{font-size:11px; border:1px solid var(--chrome-line); border-radius:5px; padding:2px 6px; opacity:.85}
+.wf-avatar{width:26px; height:26px; border-radius:50%; background:color-mix(in srgb,var(--chrome-ink) 22%, transparent);
+  display:grid; place-items:center; font-size:11px; font-weight:600}
+.wf-split{display:grid; grid-template-columns:212px 1fr}
+.wf-rail{background:var(--surface-2); border-right:1px solid var(--line); padding:10px 8px; display:flex; flex-direction:column; gap:2px}
+.wf-nav{display:block; text-align:left; background:none; border:0; border-radius:6px; padding:7px 10px;
+  font-size:12.5px; color:var(--ink); cursor:pointer}
+.wf-nav:hover{background:var(--wf-fill)}
+.wf-nav.active{background:var(--chrome); color:var(--chrome-ink)}
+.wf-railsep{font-size:9.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-mute); margin:12px 10px 4px}
+.wf-canvas-main{padding:20px 22px; min-height:520px; display:flex; flex-direction:column; gap:16px}
+
+.wf-pagehead{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+.wf-pagehead h1{font-size:16px; margin:0; font-weight:600}
+.wf-pagehead .wf-spacer{flex:1}
+
+.wf-h{background:var(--wf-fill-2); border-radius:4px; height:16px; margin:2px 0}
+.wf-line{display:block; background:var(--wf-fill); border-radius:3px; height:10px}
+.wf-line.sm{height:8px} .wf-line.tall{height:13px}
+.wf-textblock{display:flex; flex-direction:column; gap:6px}
+
+.wf-block{background:var(--wf-fill); border:1px dashed var(--line); border-radius:6px;
+  display:grid; place-items:center; color:var(--wf-ink); font-family:"IBM Plex Mono",monospace;
+  font-size:11px; text-align:center; padding:8px}
+
+.wf-card{border:1px solid var(--line); border-radius:8px; padding:14px; background:var(--surface); display:flex; flex-direction:column; gap:10px}
+.wf-card.plain{background:var(--surface-2)}
+.wf-cardtitle{font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-mute); font-weight:600}
+
+.wf-grid{display:grid; gap:14px}
+.cols-2{grid-template-columns:repeat(2,1fr)}
+.cols-3{grid-template-columns:repeat(3,1fr)}
+.cols-4{grid-template-columns:repeat(4,1fr)}
+
+.wf-field{display:flex; flex-direction:column; gap:5px}
+.wf-field>span:first-child{font-size:11px; color:var(--ink-mute)}
+.wf-input{border:1px solid var(--line); border-radius:6px; background:var(--surface-2); padding:7px 9px;
+  font-size:12px; color:var(--ink-mute); min-height:31px; display:flex; align-items:center}
+.wf-input.select::after{content:"▾"; margin-left:auto; color:var(--wf-ink)}
+
+.wf-btn{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--surface-2);
+  color:var(--ink); border-radius:999px; padding:6px 13px; font-size:12px; font-family:"IBM Plex Mono",monospace; cursor:default}
+.wf-btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600}
+.wf-btnrow{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+
+.wf-tabs{display:flex; gap:4px; border-bottom:1px solid var(--line); padding-bottom:0}
+.wf-tab{padding:7px 12px; font-size:12px; border:1px solid transparent; border-bottom:0; border-radius:7px 7px 0 0; color:var(--ink-mute); cursor:pointer}
+.wf-tab.active{background:var(--surface); border-color:var(--line); color:var(--ink); font-weight:600; margin-bottom:-1px}
+
+.wf-table{border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.wf-tr{display:grid; grid-template-columns:var(--cols,repeat(6,1fr)); gap:10px; padding:9px 12px; align-items:center; font-size:12px}
+.wf-tr+.wf-tr{border-top:1px solid var(--line)}
+.wf-tr.wf-th{background:var(--surface-2); font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-mute); font-weight:600}
+.wf-tr span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.wf-mono{font-family:"IBM Plex Mono",monospace; font-size:11.5px}
+
+.wf-pill{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px;
+  border:1px solid var(--line); color:var(--ink-mute); background:var(--surface-2)}
+.wf-pill.ok{background:var(--ok-soft); color:var(--ok); border-color:transparent}
+.wf-pill.warn{background:var(--warn-soft); color:var(--warn); border-color:transparent}
+.wf-pill.err{background:var(--err-soft); color:var(--err); border-color:transparent}
+.wf-pill.info{background:color-mix(in srgb,var(--link) 16%, transparent); color:var(--link); border-color:transparent}
+
+.wf-kpi{border:1px solid var(--line); border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; gap:8px}
+.wf-kpi .lab{font-size:11px; color:var(--ink-mute)}
+.wf-kpi .num{height:22px; width:60%; background:var(--wf-fill-2); border-radius:4px}
+.wf-kpi.alert{border-color:color-mix(in srgb,var(--err) 45%, var(--line))}
+
+.wf-note{font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-mute);
+  border-left:2px solid var(--link); padding:6px 0 6px 10px; margin:0; background:linear-gradient(90deg,color-mix(in srgb,var(--link) 8%, transparent),transparent)}
+
+.wf-stepper{display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--ink-mute); font-family:"IBM Plex Mono",monospace}
+.wf-stepper i{width:20px; height:20px; border-radius:50%; border:1px solid var(--line); display:grid; place-items:center; font-style:normal}
+.wf-stepper i.on{background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600}
+.wf-stepper .bar{width:26px; height:1px; background:var(--line)}
+
+.wf-flow{display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:11px; color:var(--ink-mute); font-family:"IBM Plex Mono",monospace}
+.wf-flow i{width:12px; height:12px; border-radius:50%; border:2px solid var(--line); display:inline-block; font-style:normal}
+.wf-flow i.done{background:var(--link); border-color:var(--link)}
+.wf-flow .seg{width:22px; height:2px; background:var(--line)}
+
+.wf-radio{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-mute)}
+.wf-radio i{width:13px; height:13px; border-radius:50%; border:1px solid var(--wf-ink); display:inline-block; flex:none}
+.wf-radio i.on{border-color:var(--accent); box-shadow:inset 0 0 0 3px var(--accent)}
+.wf-check{display:flex; align-items:flex-start; gap:8px; font-size:12px; color:var(--ink-mute)}
+.wf-check i{width:14px; height:14px; border-radius:3px; border:1px solid var(--wf-ink); flex:none; margin-top:1px}
+.wf-check i.on{background:var(--accent); border-color:var(--accent)}
+
+/* Cadres non back-office */
+.wf-pubframe{background:var(--surface)}
+.wf-pubbar{display:flex; align-items:center; gap:10px; padding:12px 18px; border-bottom:1px solid var(--line)}
+.wf-pubbar .wf-brand{color:var(--chrome)}
+.wf-pubbar .wf-tag{color:var(--ink-mute)}
+.wf-pubmain{padding:34px 30px; display:flex; flex-direction:column; gap:18px; align-items:center; text-align:center}
+.wf-pubmain .inner{width:100%; max-width:420px; display:flex; flex-direction:column; gap:16px; text-align:left}
+.wf-pubfoot{border-top:1px solid var(--line); padding:14px 18px; font-size:11px; color:var(--ink-mute); text-align:center}
+
+.wf-authframe{padding:34px; display:flex; justify-content:center; background:var(--surface-2)}
+.wf-authcard{width:100%; max-width:360px; background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:24px; display:flex; flex-direction:column; gap:14px}
+.wf-authcard .logo{width:34px; height:34px; border-radius:8px; background:var(--chrome)}
+
+.wf-docframe{padding:26px; background:var(--surface-2); display:flex; justify-content:center}
+.wf-sheet{background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow); border-radius:3px;
+  padding:22px; width:100%; max-width:420px; display:flex; flex-direction:column; gap:12px; font-size:12px}
+.wf-sheet .rowline{display:flex; justify-content:space-between; gap:10px; color:var(--ink-mute)}
+.wf-sheet .hr{height:1px; background:var(--line); margin:4px 0}
+
+/* Zones cliquables */
+[data-goto]{cursor:pointer; transition:outline-color .1s, background-color .1s}
+[data-goto]:hover{outline:2px solid var(--accent); outline-offset:2px; background:var(--accent-soft)}
+.wf-tr[data-goto]:hover,.wf-nav[data-goto]:hover{background:var(--accent-soft)}
+body.show-hot [data-goto]{outline:1.5px dashed color-mix(in srgb,var(--accent) 70%, transparent); outline-offset:2px}
+@media (prefers-reduced-motion:no-preference){
+  body.show-hot [data-goto]{animation:wfp 2s ease-in-out infinite}
+  @keyframes wfp{0%,100%{outline-color:color-mix(in srgb,var(--accent) 30%, transparent)}50%{outline-color:var(--accent)}}
+}
+
+.hint{max-width:1080px; margin:0 auto 14px; font-size:11.5px; color:var(--ink-mute); display:flex; gap:14px; flex-wrap:wrap}
+.hint b{color:var(--ink)}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr; grid-template-rows:auto auto 1fr; grid-template-areas:"head" "nav" "canvas"}
+  .rail{display:none}
+  .railSelect{display:block; grid-area:nav; margin:8px 14px; padding:8px 10px; font:inherit;
+    border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink)}
+  .vhead{gap:10px}
+  .vtitle{font-size:13px}
+  .wf-split{grid-template-columns:1fr}
+  .wf-rail{flex-direction:row; overflow:auto; border-right:0; border-bottom:1px solid var(--line)}
+  .wf-railsep{display:none}
+  .cols-4{grid-template-columns:repeat(2,1fr)}
+  .cols-3{grid-template-columns:1fr}
+  .notes{width:100%}
+}
+</style>
+
+<div class="app">
+  <header class="vhead">
+    <span class="vtitle">Okapi <b>Logistics</b> · Maquettes</span>
+    <div class="nav-arrows">
+      <button id="prev" title="Écran précédent ( [ )">‹</button>
+      <button id="next" title="Écran suivant ( ] )">›</button>
+    </div>
+    <div class="crumb"><span class="sid" id="sid">W-AUTH-01</span><span class="txt" id="crumb">Authentification / Connexion</span></div>
+    <span class="spacer"></span>
+    <label class="flowpick">Parcours
+      <select id="flow">
+        <option value="">— libre —</option>
+      </select>
+      <span class="flowstep" id="flowstep"></span>
+    </label>
+    <div class="toggles">
+      <button id="hot" aria-pressed="false" title="Surligner les zones cliquables ( h )">◹ Zones cliquables</button>
+      <button id="notesBtn" aria-pressed="false" title="Notes &amp; règles de l'écran">✎ Notes</button>
+      <button id="theme" title="Thème clair / sombre">◐ Thème</button>
+    </div>
+  </header>
+  <select class="railSelect" id="railSelect" aria-label="Choisir un écran"></select>
+  <nav class="rail" id="rail"></nav>
+  <main class="canvas" id="canvas"></main>
+</div>
+
+<aside class="notes" id="notes" aria-live="polite">
+  <h3><span>Notes &amp; règles — <span id="notesId">W-AUTH-01</span></span><button id="notesClose" aria-label="Fermer">×</button></h3>
+  <ul id="notesList"></ul>
+</aside>
+
+<script>
+(function(){
+"use strict";
+
+/* ------------------------------- helpers de rendu ------------------------------- */
+var E=function(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});};
+function L(w){return '<span class="wf-line" style="width:'+(w||'100%')+'"></span>';}
+function LINES(arr){return '<div class="wf-textblock">'+arr.map(function(w){return L(w);}).join('')+'</div>';}
+function H(t,w){return '<div class="wf-pagehead"><h1>'+E(t)+'</h1>'+(w||'')+'</div>';}
+function F(label,val,goto){return '<label class="wf-field"><span>'+E(label)+'</span><span class="wf-input'+(/(▾)/.test(val||'')?' select':'')+'"'+(goto?' data-goto="'+goto+'"':'')+'>'+E(val||'')+'</span></label>';}
+function B(t,o){o=o||{};return '<button class="wf-btn'+(o.primary?' primary':'')+'"'+(o.goto?' data-goto="'+o.goto+'"':'')+(o.goto?'':' title="(maquette)"')+'>'+E(t)+'</button>';}
+function PILL(t,k){return '<span class="wf-pill '+(k||'')+'">'+E(t)+'</span>';}
+function BLOCK(t,h){return '<div class="wf-block" style="min-height:'+(h||120)+'px">'+E(t||'')+'</div>';}
+function NOTE(t){return '<p class="wf-note">'+t+'</p>';}
+function CARD(title,body,plain){return '<div class="wf-card'+(plain?' plain':'')+'">'+(title?'<div class="wf-cardtitle">'+E(title)+'</div>':'')+body+'</div>';}
+function KPI(lab,alert){return '<div class="wf-kpi'+(alert?' alert':'')+'"><span class="lab">'+E(lab)+'</span><span class="num"></span></div>';}
+function RADIO(label,on){return '<span class="wf-radio"><i class="'+(on?'on':'')+'"></i>'+E(label)+'</span>';}
+function CHECK(label,on){return '<span class="wf-check"><i class="'+(on?'on':'')+'"></i><span>'+E(label)+'</span></span>';}
+function TABLE(cols,head,rows){
+  var c='--cols:'+cols+';';
+  var h='<div class="wf-tr wf-th" style="'+c+'">'+head.map(function(x){return '<span>'+E(x)+'</span>';}).join('')+'</div>';
+  var b=rows.map(function(r){
+    return '<div class="wf-tr" style="'+c+'"'+(r.goto?' data-goto="'+r.goto+'"':'')+'>'+
+      r.cells.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div>';
+  }).join('');
+  return '<div class="wf-table">'+h+b+'</div>';
+}
+function STEP(n){
+  var o=['1','2','3'].map(function(x){return '<i class="'+(x==n?'on':'')+'">'+x+'</i>';});
+  return '<div class="wf-stepper">'+o[0]+'<span class="bar"></span>'+o[1]+'<span class="bar"></span>'+o[2]+
+    '<span style="margin-left:8px">Étape '+n+'/3</span></div>';
+}
+function TABS(items,active){
+  return '<div class="wf-tabs">'+items.map(function(it){
+    return '<span class="wf-tab'+(it.k===active?' active':'')+'"'+(it.goto&&it.k!==active?' data-goto="'+it.goto+'"':'')+'>'+E(it.t)+'</span>';
+  }).join('')+'</div>';
+}
+
+/* Ossature back-office partagée */
+function shell(active,main,opts){
+  opts=opts||{};
+  function nav(k,t,goto){return '<button class="wf-nav'+(active===k?' active':'')+'" data-goto="'+goto+'">'+E(t)+'</button>';}
+  return '<div class="wf-chrome">'+
+    '<div class="wf-bar"><span class="wf-brand">◈ Okapi Logistics</span>'+
+      '<span class="wf-omnisearch" data-goto="W-AGT-13">⌕ Rechercher un n° de suivi…</span>'+
+      '<span class="wf-baruser"><span class="wf-tag">'+(opts.agency||'Agence Cotonou')+'</span>'+
+      '<span class="wf-tag">FR</span><span class="wf-tag">EN</span><span class="wf-tag">中</span>'+
+      '<span class="wf-avatar">AB</span></span></div>'+
+    '<div class="wf-split"><nav class="wf-rail">'+
+      nav('dashboard','Tableau de bord','W-AGT-01')+
+      nav('new','＋ Nouveau colis','W-AGT-02')+
+      nav('parcels','Colis','W-AGT-06')+
+      nav('search','Recherche','W-AGT-13')+
+      '<span class="wf-railsep">Administration</span>'+
+      nav('adm','Tableau de bord siège','W-ADM-01')+
+      nav('reports','Rapports &amp; exports','W-ADM-02')+
+      nav('unpaid','Impayés &amp; retards','W-ADM-03')+
+      nav('tariffs','Tarifs · prix/kg','W-ADM-04')+
+      nav('fx','Taux de change','W-ADM-05')+
+      nav('audit','Journal d’audit','W-ADM-06')+
+      '<span class="wf-railsep">Configuration</span>'+
+      nav('users','Utilisateurs &amp; rôles','W-SAD-01')+
+      nav('brand','Identité visuelle','W-SAD-03')+
+      nav('ref','Villes · Devises · Corridors','W-SAD-04')+
+      nav('texts','Textes du site public','W-SAD-05')+
+      nav('templates','Modèles de notification','W-SAD-06')+
+    '</nav><div class="wf-canvas-main">'+main+'</div></div></div>';
+}
+function pub(main){
+  return '<div class="wf-pubframe"><div class="wf-pubbar"><span class="wf-brand">◈ Okapi Logistics</span>'+
+    '<span class="wf-tag" style="margin-left:auto">FR</span><span class="wf-tag">EN</span><span class="wf-tag">中</span></div>'+
+    '<div class="wf-pubmain">'+main+'</div>'+
+    '<div class="wf-pubfoot">contact.gokapi@gmail.com · Facebook · Instagram · LinkedIn · « Le futur du commerce africain »</div></div>';
+}
+function auth(main){return '<div class="wf-authframe"><div class="wf-authcard">'+main+'</div></div>';}
+function sheet(main){return '<div class="wf-docframe"><div class="wf-sheet">'+main+'</div></div>';}
+
+/* --------------------------------- les écrans --------------------------------- */
+var S={};
+
+/* ===== Authentification ===== */
+S['W-AUTH-01']={g:0,t:'Connexion',crumb:'Authentification / Connexion',w:'narrow',
+  notes:['Argon2id, politique de complexité, verrouillage progressif après 5 échecs — <code>ENF-SEC-01</code>.',
+    'Message d’erreur générique (aucun indice sur le champ fautif).',
+    'Succès → si MFA activé : W-AUTH-02, sinon tableau de bord du rôle.',
+    'Échec → <code>audit_logs (LOGIN_FAILED)</code>.'],
+  html:auth('<div class="logo"></div>'+
+    '<div><div class="wf-h" style="width:70%"></div><span class="wf-line sm" style="width:55%;margin-top:6px"></span></div>'+
+    F('E-mail','prenom.nom@okapi.example')+
+    F('Mot de passe','••••••••••••')+
+    CHECK('Se souvenir de cet appareil')+
+    B('Se connecter',{primary:true,goto:'W-AUTH-02'})+
+    '<div class="wf-btnrow" style="justify-content:space-between"><a data-goto="W-AUTH-03">Mot de passe oublié ?</a><span class="wf-tag" style="border:1px solid var(--line);border-radius:5px;padding:2px 6px">FR · EN · 中</span></div>')};
+
+S['W-AUTH-02']={g:0,t:'Vérification MFA (OTP)',crumb:'Authentification / Vérification en deux étapes',w:'narrow',
+  notes:['MFA TOTP obligatoire pour DAF et Super-admin — <code>ENF-SEC-02</code> ; recommandé pour les agents.',
+    'Codes de secours à usage unique.',
+    '« Faire confiance à cet appareil » = pas de MFA pendant 30 jours.'],
+  html:auth('<div><div class="wf-h" style="width:60%"></div><span class="wf-line sm" style="width:80%;margin-top:6px"></span></div>'+
+    '<div class="wf-btnrow" style="gap:6px">'+['','','','','',''].map(function(){return '<span class="wf-input" style="width:34px;justify-content:center">_</span>';}).join('')+'</div>'+
+    CHECK('Faire confiance à cet appareil 30 jours')+
+    B('Vérifier',{primary:true,goto:'W-AGT-01'})+
+    '<a>Renvoyer / utiliser un code de secours</a>')};
+
+S['W-AUTH-03']={g:0,t:'Mot de passe oublié',crumb:'Authentification / Réinitialisation',w:'narrow',
+  notes:['Message neutre : « si un compte existe, un lien a été envoyé ».',
+    'Jeton à usage unique, valable ≤ 1 h.',
+    'La réinitialisation invalide toutes les sessions existantes.'],
+  html:auth('<div class="wf-h" style="width:65%"></div>'+
+    F('E-mail du compte','')+
+    B('Envoyer le lien',{primary:true})+
+    NOTE('Un e-mail est envoyé si un compte correspond. Aucune information n’est divulguée sinon.')+
+    '<div class="hr" style="height:1px;background:var(--line)"></div>'+
+    '<div class="wf-cardtitle">Nouveau mot de passe</div>'+
+    F('Mot de passe','')+F('Confirmer','')+
+    LINES(['40%','55%','35%'])+
+    B('Enregistrer le mot de passe',{primary:true,goto:'W-AUTH-01'}))};
+
+/* ===== Agent fret ===== */
+S['W-AGT-01']={g:1,t:'Tableau de bord agence',crumb:'Agent / Tableau de bord — Agence Cotonou',
+  notes:['KPIs bornés à l’agence active ; clic sur un KPI → W-AGT-06 pré-filtré.',
+    '« Nouveau colis » = action principale, raccourci <code>n</code>.',
+    'Lignes du tableau cliquables → fiche colis W-AGT-07.'],
+  html:shell('dashboard',
+    H('Tableau de bord','<span class="wf-spacer"></span>'+B('＋ Nouveau colis',{primary:true,goto:'W-AGT-02'}))+
+    '<div class="wf-grid cols-4">'+KPI('Colis du jour')+KPI('En transit')+KPI('Arrivés à retirer')+KPI('Impayés',true)+'</div>'+
+    CARD('Encaissements du jour (Cotonou)',LINES(['80%','45%']))+
+    CARD('Derniers colis enregistrés',
+      TABLE('1.4fr 1fr .8fr .9fr .9fr',['N° suivi','Destination','Statut','Paiement','Enregistré'],[
+        {goto:'W-AGT-07',cells:['<span class="wf-mono">OKP26090043FIH</span>','Kinshasa (FIH)',PILL('Enregistré','neutral'),PILL('Impayé','err'),'il y a 4 min']},
+        {goto:'W-AGT-07',cells:['<span class="wf-mono">OKP26090041FIH</span>','Kinshasa (FIH)',PILL('En transit','info'),PILL('Partiel','warn'),'09:12']},
+        {goto:'W-AGT-07',cells:['<span class="wf-mono">OKP26090040FIH</span>','Kinshasa (FIH)',PILL('Enregistré','neutral'),PILL('Payé','ok'),'08:57']}
+      ]))+
+    NOTE('À faire : 9 colis « Arrivé » non remis · 5 relances impayés à envoyer.'))};
+
+S['W-AGT-02']={g:1,t:'Enregistrement · 1. Parties & trajet',crumb:'Agent / Nouveau colis — étape 1 sur 3',
+  notes:['Champs obligatoires : parties, villes, mode, poids, nature, valeur déclarée — <code>EF-ENR-01/02/03</code>.',
+    'Ville de destination → aperçu du code IATA inséré dans le n° de suivi.',
+    'Consentement client recueilli et horodaté — <code>RG-14</code>.',
+    '<code>Idempotency-Key</code> généré ici : un double envoi ne crée qu’un colis — <code>RG-12</code>.'],
+  html:shell('new',STEP(1)+
+    '<div class="wf-grid cols-2">'+
+      CARD('Expéditeur',F('Nom *','Awa D.')+F('Téléphone *','+229 …')+F('E-mail','')+F('Adresse','Cotonou, …'))+
+      CARD('Destinataire',F('Nom *','Jean K.')+F('Téléphone *','+243 …')+F('E-mail','')+F('Adresse','Kinshasa, Gombe'))+
+    '</div>'+
+    CARD('Trajet',
+      '<div class="wf-grid cols-3">'+F('Ville de départ *','Cotonou (COO) ▾')+F('Ville de destination *','Kinshasa (FIH) ▾')+
+      '<div class="wf-field"><span>Mode de transport *</span><div class="wf-btnrow">'+RADIO('Aérien',true)+RADIO('Maritime')+'</div></div></div>'+
+      NOTE('Code inséré dans le n° de suivi : <b>FIH</b>'))+
+    CARD('Colis','<div class="wf-grid cols-3">'+F('Poids (kg) *','12,40')+F('Nature du contenu *','Pièces détachées')+F('Valeur déclarée','300,00  USD ▾')+'</div>')+
+    CARD('Consentement',CHECK('Le client accepte les mentions d’information (suivi, notifications) — version v1-2026-01',true)+'<a>Lire les mentions</a>')+
+    '<div class="wf-btnrow" style="justify-content:space-between">'+B('Annuler',{goto:'W-AGT-01'})+B('Suivant : Photo ›',{primary:true,goto:'W-AGT-03'})+'</div>')};
+
+S['W-AGT-03']={g:1,t:'Enregistrement · 2. Photo du colis',crumb:'Agent / Nouveau colis — étape 2 sur 3 (photo obligatoire)',
+  notes:['La photo est <b>obligatoire</b> pour valider l’enregistrement — <code>EF-ENR-04</code> / <code>RG-06</code>.',
+    'Compression client ~1600 px / ~300 Ko, upload direct au stockage objet (presigned) — <code>ENF-PERF-05</code>.',
+    'EXIF de géolocalisation retiré ; horodatage serveur ; empreinte SHA-256 — <code>EF-ENR-05</code>.',
+    'Après <code>EN_TRANSIT</code> : écran en lecture seule, photo verrouillée — <code>EF-ENR-06</code>.'],
+  html:shell('new',STEP(2)+
+    '<div class="wf-grid cols-2">'+
+      BLOCK('◉  flux caméra en direct',240)+
+      CARD('Photos du colis (1)',
+        '<div class="wf-btnrow">'+BLOCK('vignette 1 · ★ principale',90)+'</div>'+
+        '<div class="wf-btnrow">'+B('Reprendre')+B('Définir principale')+B('Supprimer')+'</div>'+
+        B('＋ Ajouter une autre photo')+
+        NOTE('EXIF géo retiré ✔ · horodatage serveur · SHA-256 calculé'))+
+    '</div>'+
+    '<div class="wf-btnrow"><span class="wf-btn">◉ Prendre la photo</span></div>'+
+    '<div class="wf-btnrow" style="justify-content:space-between">'+B('‹ Précédent',{goto:'W-AGT-02'})+B('Suivant : Tarif ›',{primary:true,goto:'W-AGT-04'})+'</div>'+
+    NOTE('« Suivant » est désactivé tant qu’aucune photo principale n’est présente.'))};
+
+S['W-AGT-04']={g:1,t:'Enregistrement · 3. Tarif & récapitulatif',crumb:'Agent / Nouveau colis — étape 3 sur 3',
+  notes:['Montant dû = <code>prix_par_kg(destination, mode) × poids</code> (+ frais fixes / min si configurés) — <code>EF-ENR-09</code>, décision <code>D6</code>.',
+    'Prix par kg défini par l’administration : écran W-ADM-04.',
+    'Devise de facturation = devise de l’agence, changeable ici ; figée dès le 1er paiement — <code>RG-02</code>.',
+    'Conversion vers USD affichée en permanence ; blocage si aucun taux — <code>EF-DEV-05/06</code>.'],
+  html:shell('new',STEP(3)+
+    '<div class="wf-grid cols-2">'+
+      CARD('Tarif — Kinshasa (FIH) · Aérien',
+        TABLE('1fr .6fr',['Élément','Valeur'],[
+          {goto:'W-ADM-04',cells:['Prix par kg <span class="wf-pill info">config</span>','1,10 USD/kg']},
+          {cells:['Poids','12,40 kg']},
+          {cells:['Frais fixes','0,00 USD']},
+          {cells:['Sous-total','13,64 USD']}
+        ])+
+        F('Ajustement agent (−15 % … +15 %)','0,00 USD')+
+        '<div class="wf-field"><span>MONTANT TOTAL DÛ</span><span class="wf-input" style="font-weight:600;color:var(--ink)">13,64  USD ▾</span></div>'+
+        NOTE('≈ 13,64 USD (devise de référence). Ajustement hors fourchette → justification obligatoire, tracée.'))+
+      CARD('Récapitulatif',
+        LINES(['90%','75%','60%'])+
+        '<div class="wf-btnrow">'+PILL('Photo ✔','ok')+PILL('Consentement ✔','ok')+'</div>'+
+        '<div class="wf-field"><span>Canal de notification du client</span><div class="wf-btnrow">'+RADIO('SMS')+RADIO('WhatsApp',true)+RADIO('E-mail')+'</div></div>'+
+        F('Langue du client','FR ▾'))+
+    '</div>'+
+    '<div class="wf-btnrow" style="justify-content:space-between">'+B('‹ Précédent',{goto:'W-AGT-02'})+B('Enregistrer et générer le n° de suivi',{primary:true,goto:'W-AGT-05'})+'</div>')};
+
+S['W-AGT-05']={g:1,t:'Confirmation & impression',crumb:'Agent / Colis enregistré',
+  notes:['Numéro de suivi : <code>OKP</code> + <code>AAMM</code> + séquentiel <b>mensuel par destination</b> + code IATA — <code>RG-01</code>, décision <code>D2</code>.',
+    'Étiquette 100×150 mm avec QR + code-barres Code 128 ; reçu A5 — <code>EF-ENR-10</code>.',
+    'Étiquette et reçu archivés dans l’onglet Documents.',
+    '« Encaisser maintenant » → W-AGT-09 pré-rempli avec le montant dû.'],
+  html:shell('new',
+    H('Colis enregistré ✔')+
+    CARD('',
+      '<div class="wf-h" style="width:40%"></div>'+
+      '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:20px;letter-spacing:.06em">OKP 2609 0043 FIH</div>'+
+      BLOCK('[ QR ]   |||||||  Code 128   ·   Cotonou → Kinshasa (FIH) · 12,40 kg · Aérien',120)+
+      '<div class="wf-btnrow">'+PILL('Montant dû 13,64 USD','neutral')+PILL('Paiement : IMPAYÉ','err')+'</div>')+
+    '<div class="wf-btnrow">'+
+      B('🖨 Imprimer l’étiquette',{goto:'W-DOC-01'})+B('🖨 Imprimer le reçu',{goto:'W-DOC-02'})+
+      B('$ Encaisser maintenant',{primary:true,goto:'W-AGT-09'})+B('＋ Enregistrer un autre colis',{goto:'W-AGT-02'})+
+      B('Ouvrir la fiche colis',{goto:'W-AGT-07'})+'</div>'+
+    NOTE('Étiquette et reçu archivés — onglet Documents de la fiche (W-AGT-11).'))};
+
+S['W-AGT-06']={g:1,t:'Liste des colis',crumb:'Agent / Colis',
+  notes:['Périmètre appliqué : un agent ne voit que son agence, un DAF ses pays — <code>RG-10</code>.',
+    'Colonnes triables ; ligne cliquable → W-AGT-07.',
+    'Export Excel / PDF de la sélection filtrée (asynchrone si volumineux) — <code>EF-ADM-04</code>.'],
+  html:shell('parcels',
+    H('Colis','<span class="wf-spacer"></span>'+B('＋ Nouveau',{primary:true,goto:'W-AGT-02'}))+
+    F('Recherche','n°, nom, téléphone…','W-AGT-13')+
+    '<div class="wf-grid cols-4">'+F('Statut','Tous ▾')+F('Paiement','Tous ▾')+F('Destination','Toutes ▾')+F('Période','30 j ▾')+'</div>'+
+    '<div class="wf-btnrow" style="justify-content:flex-end">'+B('Exporter ▾')+'</div>'+
+    TABLE('1.3fr .9fr .5fr .9fr .9fr .6fr',['N° suivi','Départ → Dest.','Poids','Statut','Paiement','Créé'],[
+      {goto:'W-AGT-07',cells:['<span class="wf-mono">OKP26090043FIH</span>','COO → FIH','12,4',PILL('Enregistré','neutral'),PILL('Impayé','err'),'11:20']},
+      {goto:'W-AGT-07',cells:['<span class="wf-mono">OKP26090041FIH</span>','COO → FIH','5,0',PILL('En transit','info'),PILL('Partiel','warn'),'09:12']},
+      {goto:'W-AGT-07',cells:['<span class="wf-mono">OKP26090012BZV</span>','COO → BZV','2,1',PILL('Arrivé','neutral'),PILL('Payé','ok'),'hier']},
+      {goto:'W-AGT-07',cells:['<span class="wf-mono">OKP26085501FIH</span>','COO → FIH','18,0',PILL('Livré','ok'),PILL('Payé','ok'),'02/09']}
+    ])+
+    LINES(['30%']))};
+
+var parcelTabs=[{k:'suivi',t:'Suivi',goto:'W-AGT-07'},{k:'pay',t:'Paiements',goto:'W-AGT-08'},{k:'photos',t:'Photos',goto:'W-AGT-10'},{k:'docs',t:'Documents',goto:'W-AGT-11'}];
+function parcelHead(){
+  return H('OKP26090041FIH')+
+    '<div class="wf-btnrow">'+PILL('EN TRANSIT','info')+PILL('PARTIEL — solde 5,00 USD','warn')+
+    '<span class="wf-spacer" style="flex:1"></span>'+B('Changer le statut',{goto:'W-AGT-12'})+'</div>'+
+    LINES(['55%']);
+}
+
+S['W-AGT-07']={g:1,t:'Fiche colis · Suivi',crumb:'Agent / Colis OKP26090041FIH / Suivi',
+  notes:['Transitions autorisées seulement (machine à états) — <code>RG-07</code>.',
+    'Les évènements « visible client » alimentent la page publique W-PUB-02 ; les autres restent internes.',
+    'Le bloc parties est masqué si le dossier a été anonymisé (RGPD).'],
+  html:shell('parcels',parcelHead()+TABS(parcelTabs,'suivi')+
+    CARD('Historique des étapes',
+      '<div class="wf-flow"><i class="done"></i><span class="seg"></span><i class="done"></i><span class="seg"></span><i></i><span class="seg"></span><i></i>'+
+      '<span style="margin-left:8px">Enregistré · En transit · Arrivé · Livré</span></div>'+
+      LINES(['85%','80%','40%','40%'])+
+      '<div class="wf-btnrow">'+B('＋ Ajouter un évènement')+CHECK('Visible par le client',true)+'</div>')+
+    '<div class="wf-grid cols-2">'+CARD('Expéditeur',LINES(['70%','50%']))+CARD('Destinataire',LINES(['70%','50%']))+'</div>'+
+    NOTE('Valeur déclarée 300,00 USD · Contenu : Pièces détachées · Canal client : WhatsApp · Langue : FR'))};
+
+S['W-AGT-08']={g:1,t:'Fiche colis · Paiements',crumb:'Agent / Colis OKP26090041FIH / Paiements',
+  notes:['Statut de paiement <b>calculé</b> à partir des paiements confirmés ; jamais saisi — <code>EF-PAY-01</code> / <code>RG-03</code>.',
+    'Chaque ligne montre la devise saisie ET l’équivalent en devise de facturation + le taux figé — <code>EF-PAY-05</code>.',
+    'Les paiements « en attente » ne comptent pas dans le solde — <code>EF-PAY-12</code>.',
+    'Remboursement réservé DAF / super-admin — <code>EF-PAY-09</code>.'],
+  html:shell('parcels',parcelHead()+TABS(parcelTabs,'pay')+
+    '<div class="wf-grid cols-3">'+CARD('Montant dû',L('50%'),true)+CARD('Déjà encaissé',L('50%'),true)+CARD('Solde restant',L('40%'),true)+'</div>'+
+    '<div class="wf-btnrow"><span class="wf-spacer" style="flex:1"></span>'+B('$ Encaisser un paiement',{primary:true,goto:'W-AGT-09'})+'</div>'+
+    TABLE('.9fr .9fr .9fr .8fr .6fr .4fr',['Date','Montant','Moyen','Réf.','Agent','État'],[
+      {cells:['03/09 09:20','5 000 XOF · ≈ 8,20 USD','Mobile Money (M-Pesa)','MP12345','A. Boni',PILL('✔','ok')]},
+      {cells:['03/09 09:25','0,44 USD','Espèces','—','A. Boni',PILL('✔','ok')]},
+      {cells:['03/09 10:01','3,00 USD','Carte','TPE-0098','A. Boni',PILL('⏳','warn')]}
+    ])+
+    '<div class="wf-btnrow">'+B('Confirmer')+B('Marquer échec')+'</div>'+
+    NOTE('Reçus générés : <span class="wf-mono">BJ-2026-000512</span>, <span class="wf-mono">BJ-2026-000513</span>')+
+    '<div class="wf-btnrow">'+B('Voir les reçus',{goto:'W-AGT-11'})+B('Demander un remboursement')+'</div>')};
+
+S['W-AGT-09']={g:1,t:'Modale « Encaisser un paiement »',crumb:'Agent / Colis OKP26090041FIH / Encaisser',
+  notes:['Devise du paiement peut différer de la devise de facturation ; le taux est <b>figé</b> à l’enregistrement — <code>EF-PAY-05</code>.',
+    'Espèces → confirmé immédiatement ; Mobile Money / carte / virement → « en attente » puis à confirmer.',
+    '<code>Idempotency-Key</code> sur l’enregistrement — <code>RG-12</code>.',
+    'Montant > solde autorisé (avance) avec confirmation.'],
+  html:shell('parcels',
+    CARD('Encaisser un paiement — colis OKP26090041FIH · solde 5,00 USD',
+      F('Montant reçu *','5 000  XOF ▾')+
+      NOTE('≈ 8,20 USD · taux XOF→USD 0,001640 (03/09/2026, source exchangerate.host)')+
+      '<div class="wf-field"><span>Moyen de paiement *</span><div style="display:flex;flex-direction:column;gap:8px">'+
+        RADIO('Espèces')+RADIO('Mobile Money  →  M-Pesa ▾',true)+RADIO('Carte bancaire')+RADIO('Virement bancaire')+'</div></div>'+
+      F('Référence de transaction','MP-2026-000123')+
+      F('Date d’encaissement','03/09/2026 09:20')+
+      F('Note','')+
+      NOTE('Espèces → confirmé · Mobile Money / carte / virement → « en attente » puis à confirmer à réception des fonds.')+
+      '<div class="wf-btnrow" style="justify-content:flex-end">'+B('Annuler',{goto:'W-AGT-08'})+B('Enregistrer le paiement',{primary:true,goto:'W-AGT-08'})+'</div>'))};
+
+S['W-AGT-10']={g:1,t:'Fiche colis · Photos',crumb:'Agent / Colis OKP26090041FIH / Photos',
+  notes:['La photo principale est celle affichée au client (via URL signée temporaire ≤ 60 min) — <code>EF-SUI-03</code>.',
+    'Aucune suppression après expédition, sauf demande RGPD tracée (super-admin) — <code>EF-ENR-06</code>.',
+    'Ajout de photos bloqué à partir de <code>EN_TRANSIT</code>.'],
+  html:shell('parcels',parcelHead()+TABS(parcelTabs,'photos')+
+    '<div class="wf-grid cols-3">'+BLOCK('photo 1 · ★ principale',120)+BLOCK('photo 2',120)+BLOCK('photo 3',120)+'</div>'+
+    CARD('Photo 1',LINES(['80%','60%'])+
+      NOTE('prise le 03/09/2026 09:12 par A. Boni · SHA-256 3f9a… · 1600×1200 · EXIF géo retiré ✔ · verrouillée')+
+      '<div class="wf-btnrow">'+B('Voir en grand')+B('Définir comme principale')+B('Supprimer')+'</div>')+
+    B('＋ Ajouter une photo'))};
+
+S['W-AGT-11']={g:1,t:'Fiche colis · Documents',crumb:'Agent / Colis OKP26090041FIH / Documents',
+  notes:['Numérotation continue par pays, sans trou — <code>RG-09</code>.',
+    'Un reçu à chaque paiement ; une facture à la clôture (statut PAYÉ) — <code>EF-PAY-07</code>.',
+    'Liens de téléchargement = URL signées expirant sous 15 min.'],
+  html:shell('parcels',parcelHead()+TABS(parcelTabs,'docs')+
+    TABLE('1fr 1fr .9fr .7fr',['Type','Numéro','Généré le','Action'],[
+      {goto:'W-DOC-01',cells:['Étiquette','—','03/09 09:12','Télécharger']},
+      {goto:'W-DOC-02',cells:['Reçu d’enregistrement','<span class="wf-mono">BJ-2026-000511</span>','03/09 09:12','Télécharger']},
+      {goto:'W-DOC-02',cells:['Reçu de paiement','<span class="wf-mono">BJ-2026-000512</span>','03/09 09:20','Télécharger']},
+      {goto:'W-DOC-02',cells:['Reçu de paiement','<span class="wf-mono">BJ-2026-000513</span>','03/09 09:25','Télécharger']},
+      {cells:['Facture (à la clôture)','—','—','indisponible']}
+    ])+
+    NOTE('Liens de téléchargement = URL signées expirant sous 15 min.'))};
+
+S['W-AGT-12']={g:1,t:'Modale « Changer le statut »',crumb:'Agent / Colis OKP26090041FIH / Changer le statut',
+  notes:['Le sélecteur ne propose que les statuts atteignables depuis l’état courant — <code>RG-07</code>.',
+    '« Arrivé » + paiement partiel/impayé → déclenche la relance client — <code>EF-PAY-10</code>.',
+    '« Livré » + solde > 0 → justification obligatoire, action tracée (FR = strict, autres = dérogation) — <code>RG-08</code>.'],
+  html:shell('parcels',
+    CARD('Changer le statut du colis — statut actuel : EN TRANSIT',
+      '<div class="wf-field"><span>Nouveau statut *</span><div class="wf-btnrow">'+RADIO('Arrivé',true)+RADIO('Retourné')+'</div></div>'+
+      F('Lieu / ville','Kinshasa (FIH) ▾')+F('Date / heure','04/09/2026 07:30')+F('Commentaire','')+
+      CHECK('Visible par le client',true)+
+      NOTE('Passage à « Livré » avec solde impayé : justification d’un responsable obligatoire (politique du pays).')+
+      '<div class="wf-btnrow" style="justify-content:flex-end">'+B('Annuler',{goto:'W-AGT-07'})+B('Confirmer le changement',{primary:true,goto:'W-AGT-07'})+'</div>'))};
+
+S['W-AGT-13']={g:1,t:'Recherche rapide',crumb:'Agent / Recherche',
+  notes:['Raccourci clavier <code>/</code>.',
+    'Recherche par n° de suivi (exact ou partiel), nom / téléphone d’une partie.',
+    'Résultats groupés (Colis / Contacts) ; périmètre appliqué.'],
+  html:shell('search',
+    H('Recherche')+
+    F('Rechercher','n° de suivi, nom, téléphone…')+
+    CARD('Colis (3)',
+      TABLE('1.2fr 1fr .8fr',['N° suivi','Destination','Statut'],[
+        {goto:'W-AGT-07',cells:['<span class="wf-mono">OKP26090041FIH</span>','Kinshasa (FIH)',PILL('En transit','info')]},
+        {goto:'W-AGT-07',cells:['<span class="wf-mono">OKP26085501FIH</span>','Kinshasa (FIH)',PILL('Livré','ok')]},
+        {goto:'W-AGT-07',cells:['<span class="wf-mono">OKP26088401BZV</span>','Brazzaville (BZV)',PILL('Arrivé','neutral')]}
+      ]))+
+    CARD('Contacts (2)',LINES(['60%','55%']))+
+    NOTE('Périmètre appliqué : seuls les colis autorisés pour le compte apparaissent.'))};
+
+/* ===== Administration / DAF ===== */
+S['W-ADM-01']={g:2,t:'Tableau de bord consolidé',crumb:'Administration / Tableau de bord multi-pays',
+  notes:['Tous les agrégats respectent le périmètre du compte — <code>EF-ADM-01/07</code>.',
+    'Bascule « devise d’affichage » : ventilation par devise d’origine ↔ tout consolidé en USD — <code>EF-DEV-07</code>.',
+    'Servi par vues d’agrégat / vue matérialisée — perf < 5 s — <code>ENF-PERF-03</code>.'],
+  html:shell('adm',
+    H('Tableau de bord — siège')+
+    '<div class="wf-grid cols-4">'+F('Périmètre','Tous pays ▾')+F('Agence','Toutes ▾')+F('Période','01/08 → 03/09 ▾')+F('Devise d’affichage','Réf. USD ▾')+'</div>'+
+    '<div class="wf-grid cols-4">'+KPI('Colis')+KPI('CA (référence USD)')+KPI('Taux d’impayés')+KPI('Délai moyen / corridor')+'</div>'+
+    '<div class="wf-grid cols-2">'+
+      CARD('CA par devise d’origine',LINES(['80%','65%','45%','30%'])+NOTE('XOF · CDF · USD · ZAR … → contre-valeur USD'))+
+      CARD('Colis par statut',LINES(['70%','85%','40%','35%','20%']))+
+    '</div>'+
+    CARD('Répartition',LINES(['90%','75%'])+NOTE('Top destinations : FIH 61 % · BZV 14 % · JNB 9 % · DAR 7 % · KGL 5 %'))+
+    '<div class="wf-btnrow">'+B('Voir les impayés',{goto:'W-ADM-03'})+B('Rapports & exports',{goto:'W-ADM-02'})+'</div>')};
+
+S['W-ADM-02']={g:2,t:'Rapports & exports',crumb:'Administration / Rapports & exports',
+  notes:['Exports Excel (.xlsx), PDF et CSV comptable — <code>EF-ADM-04/05</code>.',
+    'Exports volumineux : tâche asynchrone, lien de téléchargement signé quand prêt.',
+    'CSV comptable : date, pièce, colis, devise d’origine, montant, contre-valeur USD, taux.'],
+  html:shell('reports',
+    H('Rapports & exports')+
+    F('Rapport','Volumes traités ▾')+
+    '<div class="wf-grid cols-4">'+F('Pays','▾')+F('Agence','▾')+F('Période','▾')+F('Devise','▾')+'</div>'+
+    CARD('Aperçu (100 premières lignes)',
+      TABLE('.6fr .9fr .6fr .6fr .8fr .8fr .6fr',['Pays','Agence','Colis','Poids','CA (orig.)','CA (USD)','Impayés'],[
+        {cells:['BJ','Cotonou','1 204','9,8 t','18,2M XOF','30 100','82']},
+        {cells:['CD','Kinshasa','2 015','…','41,0M CDF','14 500','140']}
+      ]))+
+    '<div class="wf-field"><span>Format d’export</span><div class="wf-btnrow">'+RADIO('Excel (.xlsx)',true)+RADIO('PDF')+RADIO('CSV comptable')+'</div></div>'+
+    B('Générer l’export',{primary:true})+
+    CARD('Exports récents',
+      TABLE('1.4fr .6fr .8fr',['Fichier','Statut','Action'],[
+        {cells:['<span class="wf-mono">volumes_2026-08.xlsx</span>',PILL('prêt','ok'),'Télécharger']},
+        {cells:['<span class="wf-mono">ca_devise_2026-08.pdf</span>',PILL('en cours','warn'),'—']}
+      ])))};
+
+S['W-ADM-03']={g:2,t:'Colis impayés / en retard',crumb:'Administration / Impayés & retards',
+  notes:['Alerte automatique au client quand un colis atteint « Arrivé » sans être soldé — <code>EF-PAY-10</code>.',
+    'Relances programmables (J+0, J+2, J+5) — paramètre <code>dunning.schedule_days</code>.',
+    '« Auto » = canal préféré défini à l’enregistrement de chaque colis.'],
+  html:shell('unpaid',
+    H('Impayés & retards')+
+    '<div class="wf-grid cols-4">'+F('Statut','Arrivé ▾')+F('Paiement','Impayé + Partiel ▾')+F('Pays','▾')+F('Ancienneté','> 2 j ▾')+'</div>'+
+    TABLE('1.2fr .5fr .8fr .8fr .8fr .4fr',['N° suivi','Dest.','Arrivé le','Solde','Relances','☑'],[
+      {goto:'W-AGT-08',cells:['<span class="wf-mono">OKP26088812FIH</span>','FIH','31/08','5,00 USD','2 (SMS)',CHECK('',true)]},
+      {goto:'W-AGT-08',cells:['<span class="wf-mono">OKP26088790FIH</span>','FIH','30/08','12,00 USD','1 (WA)',CHECK('',true)]},
+      {goto:'W-AGT-08',cells:['<span class="wf-mono">OKP26088401BZV</span>','BZV','29/08','3 000 XOF','0',CHECK('')]}
+    ])+
+    '<div class="wf-btnrow">'+B('Envoyer une relance aux colis sélectionnés',{primary:true})+F('Canal','Auto ▾')+'</div>'+
+    NOTE('« Auto » = canal préféré du colis (SMS / WhatsApp / e-mail).'))};
+
+S['W-ADM-04']={g:2,t:'Tarifs — prix par kg par destination',crumb:'Administration / Tarifs · prix par kg',
+  notes:['Champ « prix par kg » par destination = cœur de la tarification v1 — décision <code>D6</code>.',
+    'Frais fixes, minimum, ad valorem restent optionnels (0 par défaut).',
+    'Un nouveau tarif crée une version datée ; pas de chevauchement de périodes pour une même cible + mode.',
+    'Toute modification est tracée — <code>audit_logs (CONFIG_CHANGE)</code>.'],
+  html:shell('tariffs',
+    H('Tarifs — prix par kg par destination','<span class="wf-spacer"></span>'+B('＋ Ajouter',{primary:true}))+
+    TABLE('1.1fr .7fr .7fr .8fr .5fr .7fr',['Destination','Mode','Prix/kg','Frais fixes','Min','Valide depuis'],[
+      {cells:['Kinshasa (FIH)','Aérien','1,10 USD','0,00','0,00','01/07']},
+      {cells:['Kinshasa (FIH)','Maritime','0,45 USD','0,00','5,00','01/07']},
+      {cells:['Brazzaville (BZV)','Aérien','1,05 USD','0,00','0,00','01/06']},
+      {cells:['Johannesburg (JNB)','Aérien','1,60 USD','10,00','0,00','01/08']}
+    ])+
+    CARD('Édition',
+      '<div class="wf-grid cols-3">'+F('Destination *','Kinshasa (FIH) ▾')+
+      '<div class="wf-field"><span>Mode *</span><div class="wf-btnrow">'+RADIO('Aérien')+RADIO('Maritime',true)+'</div></div>'+
+      F('Devise *','USD ▾')+'</div>'+
+      '<div class="wf-grid cols-3">'+F('Prix par kg *','0,45')+F('Frais fixes','0,00')+F('Minimum','5,00')+'</div>'+
+      '<div class="wf-grid cols-3">'+CHECK('Activer « ad valorem »')+F('Taux','0,00 % de la valeur déclarée')+F('Valide à partir du','04/09/2026')+'</div>'+
+      F('Fourchette d’ajustement agent','−15 %  …  +15 %')+
+      '<div class="wf-btnrow" style="justify-content:flex-end">'+B('Annuler')+B('Enregistrer le tarif',{primary:true})+'</div>'))};
+
+S['W-ADM-05']={g:2,t:'Taux de change',crumb:'Administration / Taux de change',
+  notes:['Synchronisation via exchangerate.host + saisie manuelle toujours possible — décision <code>D8</code>.',
+    'Taux historisés (append-only) : un taux passé n’est jamais écrasé — <code>EF-DEV-04</code>.',
+    'Un taux manuel plus récent prévaut sur la synchro.',
+    'Badge ⚠ si un taux dépasse <code>fx.stale_hours</code> (36 h) ; alerte au tableau de bord.'],
+  html:shell('fx',
+    H('Taux de change')+
+    NOTE('Devise de référence : USD · dernière synchro 03/09 06:00 ✔ · source exchangerate.host · toutes les 6 h')+
+    '<div class="wf-btnrow">'+B('Synchroniser maintenant')+'</div>'+
+    TABLE('.8fr .9fr .7fr .9fr .5fr',['Devise','Taux → USD','Source','Depuis','Âge'],[
+      {cells:['XOF','0,001640','API','03/09 06:00',PILL('3 h','ok')]},
+      {cells:['CDF','0,000355','MANUEL','02/09 17:10',PILL('17 h','ok')]},
+      {cells:['EUR','1,0850','API','03/09 06:00',PILL('3 h','ok')]},
+      {cells:['ZAR','0,0540','API','01/09 06:00',PILL('50 h ⚠','warn')]}
+    ])+
+    CARD('Saisir un taux manuellement',
+      '<div class="wf-grid cols-3">'+F('Devise','CDF ▾  → USD')+F('Taux','0,000356')+F('Effectif à partir de','03/09/2026 12:00')+'</div>'+
+      F('Note','décision DAF')+
+      '<div class="wf-btnrow" style="justify-content:flex-end">'+B('Enregistrer le taux manuel',{primary:true})+'</div>')+
+    NOTE('Historique complet conservé par couple de devises (aucun taux passé n’est écrasé).'))};
+
+S['W-ADM-06']={g:2,t:'Journal d’audit',crumb:'Administration / Journal d’audit',
+  notes:['Journal immuable des actions sensibles : connexions, paiements, remboursements, tarifs, taux, droits, configuration — <code>ENF-SEC-06</code>.',
+    'Lecture seule ; conservation ≥ 5 ans ; horodatage, IP, avant/après.',
+    'Export CSV / PDF réservé DAF & super-admin.'],
+  html:shell('audit',
+    H('Journal d’audit','<span class="wf-spacer"></span>'+B('Exporter'))+
+    '<div class="wf-grid cols-4">'+F('Acteur','▾')+F('Action','Toutes ▾')+F('Entité','▾')+F('Période','7 j ▾')+'</div>'+
+    TABLE('1fr .8fr 1fr 1fr .6fr',['Horodatage','Acteur','Action','Entité','IP'],[
+      {cells:['03/09 10:01:22','A. Boni','REFUND (demande)','<span class="wf-mono">payment/…</span>','…']},
+      {cells:['03/09 09:25:04','A. Boni','CREATE','<span class="wf-mono">payment/…</span>','…']},
+      {cells:['03/09 08:40:11','DAF Zone 1','CONFIG_CHANGE','<span class="wf-mono">tariff/…</span>','…']},
+      {cells:['03/09 07:12:00','système','TRANSITION','<span class="wf-mono">parcel/…</span>','—']}
+    ])+
+    NOTE('Détail CONFIG_CHANGE : avant { price_per_kg: 1.00 } · après { price_per_kg: 1.10 }'))};
+
+/* ===== Super-admin / Configuration ===== */
+S['W-SAD-01']={g:3,t:'Utilisateurs & rôles',crumb:'Configuration / Utilisateurs & rôles',
+  notes:['Création, désactivation, réinitialisation MFA, attribution de rôles et de périmètres — <code>EF-ADM-06</code>.',
+    'Autorisation RBAC par permissions nommées + périmètre agence/pays — <code>ENF-SEC-04</code>.',
+    'Ligne cliquable → détail utilisateur W-SAD-02.'],
+  html:shell('users',
+    H('Utilisateurs','<span class="wf-spacer"></span>'+B('＋ Inviter',{primary:true}))+
+    '<div class="wf-grid cols-4">'+F('Recherche','nom, e-mail…')+F('Rôle','Tous ▾')+F('Pays','▾')+F('Actif','Oui ▾')+'</div>'+
+    TABLE('.9fr 1.2fr .9fr .9fr .4fr',['Nom','E-mail','Rôles','Périmètre','MFA'],[
+      {goto:'W-SAD-02',cells:['A. Boni','<span class="wf-mono">a.boni@okapi…</span>','Agent fret','Cotonou',PILL('✔','ok')]},
+      {goto:'W-SAD-02',cells:['M. Kalala','<span class="wf-mono">m.kalala@okapi…</span>','Agent fret','Kinshasa',PILL('–','neutral')]},
+      {goto:'W-SAD-02',cells:['Zone 1 DAF','<span class="wf-mono">daf1@okapi…</span>','Admin / DAF','BJ, CG',PILL('✔','ok')]},
+      {goto:'W-SAD-02',cells:['S. Admin','<span class="wf-mono">admin@okapi…</span>','Super-admin','Global',PILL('✔','ok')]}
+    ])+
+    '<div class="wf-btnrow">'+B('Désactiver')+B('Réinitialiser MFA')+B('Renvoyer l’invitation')+'</div>')};
+
+S['W-SAD-02']={g:3,t:'Détail utilisateur & périmètres',crumb:'Configuration / Utilisateurs / M. Kalala',
+  notes:['Un agent doit avoir au moins une agence ; un DAF peut couvrir plusieurs pays ; super-admin = global.',
+    'MFA exigible à la prochaine connexion.',
+    'Révocation de session immédiate côté serveur.'],
+  html:shell('users',
+    H('Utilisateur — M. Kalala')+
+    '<div class="wf-grid cols-2">'+
+      CARD('Identité',F('Nom','M. Kalala')+F('E-mail','m.kalala@okapi…')+F('Téléphone','+243 …')+F('Langue de l’interface','FR ▾'))+
+      CARD('Statut & sécurité','<div class="wf-btnrow">'+RADIO('Actif',true)+RADIO('Désactivé')+'</div>'+
+        NOTE('MFA : non activé')+'<div class="wf-btnrow">'+B('Exiger l’activation MFA')+B('Réinitialiser le mot de passe')+B('Révoquer les sessions')+'</div>')+
+    '</div>'+
+    CARD('Rôles & périmètres',
+      TABLE('.8fr .9fr .9fr .3fr',['Rôle','Périmètre pays','Périmètre agence',''],[
+        {cells:['Agent fret','CD','Kinshasa','✕']}
+      ])+B('＋ Ajouter un rôle'))+
+    '<div class="wf-btnrow" style="justify-content:flex-end">'+B('Annuler',{goto:'W-SAD-01'})+B('Enregistrer',{primary:true,goto:'W-SAD-01'})+'</div>')};
+
+S['W-SAD-03']={g:3,t:'Configuration — Identité visuelle',crumb:'Configuration / Identité visuelle & pied de page',
+  notes:['Modification sans intervention technique : logo, couleurs, textes, coordonnées, réseaux sociaux — <code>EF-CFG-01</code>.',
+    'Modifications versionnées avec prévisualisation ; restauration des valeurs par défaut possible — <code>EF-CFG-04/05</code>.',
+    'E-mail de contact <code>contact.gokapi@gmail.com</code> au lancement, modifiable ensuite — décision <code>D1</code>.'],
+  html:shell('brand',
+    H('Identité visuelle')+
+    CARD('Logo','<div class="wf-btnrow">'+BLOCK('aperçu logo',70)+B('Téléverser un nouveau logo (SVG / PNG)')+'</div>')+
+    CARD('Couleurs de marque',
+      '<div class="wf-grid cols-2">'+
+      F('Bleu marine','#170655  ▉')+F('Orange','#E47911  ▉')+
+      F('Bleu turquoise','#1CA9C9  ▉  (à confirmer)')+F('Gris anthracite','#2E3138  ▉  (à confirmer)')+'</div>')+
+    CARD('Pied de page (site public + pièces)',
+      '<div class="wf-grid cols-2">'+F('E-mail de contact','contact.gokapi@gmail.com')+F('Téléphone','+229 …')+
+      F('Site web','https://…')+F('Facebook','https://…')+F('Instagram','https://…')+F('LinkedIn','https://…')+'</div>'+
+      '<div class="wf-grid cols-3">'+F('Slogan FR','Le futur du commerce africain')+F('Slogan EN','The future of African trade')+F('Slogan 中','非洲贸易的未来')+'</div>')+
+    '<div class="wf-btnrow" style="justify-content:flex-end">'+B('Prévisualiser',{goto:'W-PUB-01'})+B('Enregistrer (versionné + tracé)',{primary:true})+'</div>')};
+
+S['W-SAD-04']={g:3,t:'Configuration — Villes / Devises / Corridors',crumb:'Configuration / Référentiel',
+  notes:['Ajouter une devise = 1 ligne + activation ; aucune devise n’est codée en dur — <code>EF-DEV-01/02</code>.',
+    'Une seule devise de référence (USD).',
+    'Ajout d’un pays / ville / corridor / devise sans déploiement de code — <code>EF-EVOL-01</code>.'],
+  html:shell('ref',
+    H('Référentiel')+
+    TABS([{k:'v',t:'Villes'},{k:'p',t:'Pays'},{k:'d',t:'Devises'},{k:'c',t:'Corridors'}],'d')+
+    '<div class="wf-btnrow" style="justify-content:flex-end">'+B('＋ Ajouter',{primary:true})+'</div>'+
+    TABLE('.6fr .8fr .8fr .5fr .5fr',['Code','Symbole','Décimales','Réf.','Active'],[
+      {cells:['USD','$','2',RADIO('',true),CHECK('',true)]},
+      {cells:['XOF','FCFA','0',RADIO(''),CHECK('',true)]},
+      {cells:['CDF','FC','2',RADIO(''),CHECK('',true)]},
+      {cells:['ZAR','R','2',RADIO(''),CHECK('',true)]},
+      {cells:['CNY','¥','2',RADIO(''),CHECK('')]}
+    ])+
+    NOTE('Onglet Villes : code IATA, pays, fuseau, origine/destination. Onglet Pays : ISO2, devise par défaut, langue, préfixe tél., TVA (0 par défaut), politique impayé. Onglet Corridors : pays origine → destination, actif.'))};
+
+S['W-SAD-05']={g:3,t:'Configuration — Textes du site public',crumb:'Configuration / Textes du site public (fr · en · zh)',
+  notes:['Textes du site public et modèles de notification éditables par langue — <code>EF-CFG-03</code>.',
+    'Contenus juridiques par pays et par langue — <code>ENF-I18N-05</code>.',
+    'Markdown autorisé pour les blocs longs (mentions, FAQ).'],
+  html:shell('texts',
+    H('Textes du site public')+
+    '<div class="wf-grid cols-2">'+F('Bloc','public.home.title ▾')+F('Aperçu','Page publique ▾','W-PUB-01')+'</div>'+
+    CARD('Traductions',
+      F('FR','Suivez votre colis Okapi en temps réel')+
+      F('EN','Track your Okapi parcel in real time')+
+      F('中','实时跟踪您的 Okapi 包裹'))+
+    NOTE('Autres blocs : accueil (sous-titre), aide à la saisie, mentions légales, confidentialité, cookies, contact DPO, FAQ.')+
+    '<div class="wf-btnrow" style="justify-content:flex-end">'+B('Prévisualiser la page publique',{goto:'W-PUB-01'})+B('Publier',{primary:true})+'</div>')};
+
+S['W-SAD-06']={g:3,t:'Configuration — Modèles de notification',crumb:'Configuration / Modèles de notification',
+  notes:['Modèles par déclencheur, canal et langue, avec variables — <code>EF-NOT-03</code>.',
+    'WhatsApp = API officielle Meta WhatsApp Business ; e-mail = Amazon SES ; SMS = connecteur à finaliser — décision <code>D7</code>.',
+    'Respect des consentements et des désinscriptions — <code>EF-NOT-06</code>.'],
+  html:shell('templates',
+    H('Modèles de notification')+
+    '<div class="wf-grid cols-4">'+F('Déclencheur','Changement de statut ▾')+F('Canal','WhatsApp ▾')+F('Langue','FR ▾')+
+      '<div class="wf-field"><span>Actif</span><div>'+CHECK('',true)+'</div></div>'+'</div>'+
+    F('Objet (e-mail uniquement)','—')+
+    CARD('Corps du message',
+      BLOCK('Bonjour, votre colis {{numero_suivi}} est maintenant « {{statut}} » à {{ville_actuelle}}.  ·  Suivi : {{lien_suivi}}',110)+
+      NOTE('Variables : {{numero_suivi}} {{statut}} {{ville_destination}} {{ville_actuelle}} {{lien_suivi}} {{solde}} {{devise}}'))+
+    '<div class="wf-btnrow" style="justify-content:flex-end">'+B('Envoyer un test')+B('Enregistrer',{primary:true})+'</div>')};
+
+/* ===== Client (public) ===== */
+S['W-PUB-01']={g:4,t:'Accueil public / saisie du numéro',crumb:'Client / Suivi — accueil',w:'sheet',
+  notes:['Page responsive, légère, utilisable en 3G — <code>ENF-PERF-02</code>. Multilingue fr / en / zh.',
+    'Aucun compte nécessaire — <code>EF-SUI-01</code>.',
+    'Rate limiting par IP ; CAPTCHA activé seulement si abus détecté — <code>EF-SUI-05</code>.',
+    'Lien profond <code>…/fr/suivi/OKP26090043FIH</code> → va directement au résultat.'],
+  html:pub('<div class="wf-h" style="width:60%;height:20px"></div>'+
+    '<div class="inner">'+
+      '<label class="wf-field"><span>Numéro de suivi</span><span class="wf-input">OKP26090043FIH</span></label>'+
+      B('Suivre',{primary:true,goto:'W-PUB-02'})+
+      '<span class="wf-line sm" style="width:55%"></span>'+
+      '<span class="wf-line sm" style="width:40%"></span>'+
+    '</div>')};
+
+S['W-PUB-02']={g:4,t:'Résultat du suivi',crumb:'Client / Suivi — OKP26090043FIH',w:'sheet',
+  notes:['Affiche : statut, photo, statut de paiement <b>synthétique</b> (sans montant), historique daté — <code>EF-SUI-02</code>.',
+    'N’affiche jamais : noms complets, adresses, téléphones, valeur déclarée, montants, moyens de paiement — <code>EF-SUI-04</code>.',
+    'Photo servie via URL signée temporaire régénérée à chaque affichage — <code>EF-SUI-03</code>.',
+    'Seuls les évènements « visible client » apparaissent.'],
+  html:pub('<div class="inner">'+
+    '<div class="wf-mono">Colis OKP26090043FIH</div>'+
+    '<div class="wf-btnrow">'+PILL('● EN TRANSIT','info')+'</div>'+
+    '<div class="wf-flow"><i class="done"></i><span class="seg"></span><i class="done"></i><span class="seg"></span><i></i><span class="seg"></span><i></i>'+
+      '<span style="margin-left:6px">Enreg. · Transit · Arrivé · Livré</span></div>'+
+    '<div class="wf-btnrow">'+PILL('⬤ Paiement partiel','warn')+'<span style="font-size:11px;color:var(--ink-mute)">(aucun montant affiché)</span></div>'+
+    '<div class="wf-grid cols-2" style="align-items:start">'+BLOCK('photo du colis',130)+LINES(['80%','60%','50%'])+'</div>'+
+    CARD('Historique',LINES(['70%','65%']))+
+    NOTE('Vous recevez déjà les mises à jour par WhatsApp.')+
+    '<div class="wf-btnrow">'+B('Changer de langue')+'</div>'+
+  '</div>')};
+
+S['W-PUB-03']={g:4,t:'Numéro introuvable',crumb:'Client / Suivi — introuvable',w:'sheet',
+  notes:['Message identique que le numéro soit mal formé ou simplement inconnu (anti-énumération) — <code>EF-SUI-05</code>.',
+    'Après N tentatives infructueuses depuis une IP : CAPTCHA.'],
+  html:pub('<div class="inner">'+
+    '<div class="wf-h" style="width:75%"></div>'+
+    LINES(['90%','80%','70%'])+
+    '<div class="wf-btnrow">'+B('Réessayer',{primary:true,goto:'W-PUB-01'})+'</div>'+
+    '<span class="wf-line sm" style="width:60%"></span>'+
+  '</div>')};
+
+/* ===== Documents imprimables ===== */
+S['W-DOC-01']={g:5,t:'Étiquette colis (100 × 150 mm)',crumb:'Document / Étiquette',w:'sheet',
+  notes:['QR = numéro de suivi (ouvre la page publique). Code-barres Code 128 = numéro de suivi — <code>EF-ENR-10</code>.',
+    'Générée en PDF, archivée (<code>documents</code>, type <code>LABEL</code>). Réimpression depuis W-AGT-11.'],
+  html:sheet(
+    '<div class="rowline"><b>OKAPI LOGISTICS</b><span>Aérien</span></div>'+
+    '<div class="hr"></div>'+
+    BLOCK('[ QR ]        OKP26090043FIH        |I| |II| |I| |III|  (Code 128)',110)+
+    '<div class="rowline"><span>DE : Cotonou (COO)</span><span>LE : 03/09/2026</span></div>'+
+    '<div class="rowline"><span>À : Kinshasa (FIH)</span><span>Poids : 12,40 kg</span></div>'+
+    '<div class="rowline"><span>Exp. : Awa D. · +229 …</span><span>Dest. : Jean K. · +243 …</span></div>'+
+    '<div class="hr"></div>'+
+    '<div class="wf-mono" style="font-size:11px">Suivi : suivi.okapilogistics — OKP26090043FIH</div>'+
+    '<div class="wf-btnrow">'+B('‹ Retour à la fiche',{goto:'W-AGT-11'})+'</div>')};
+
+S['W-DOC-02']={g:5,t:'Reçu d’enregistrement / de paiement',crumb:'Document / Reçu',w:'sheet',
+  notes:['Un reçu à chaque paiement (partiel ou total) — <code>EF-PAY-07</code> ; une facture récapitulative à la clôture.',
+    'Numérotation continue par pays, sans trou — <code>RG-09</code>.',
+    'Mentions légales et taux appliqué figés (immuabilité de la pièce).'],
+  html:sheet(
+    '<div class="rowline"><b>OKAPI LOGISTICS</b><span class="wf-mono">REÇU N° BJ-2026-000512</span></div>'+
+    '<div class="rowline"><span>Agence Cotonou · +229 … · contact.gokapi@gmail.com</span><span>03/09/2026 09:20</span></div>'+
+    '<div class="hr"></div>'+
+    '<div class="rowline"><span>Colis</span><span class="wf-mono">OKP26090043FIH</span></div>'+
+    '<div class="rowline"><span>Trajet</span><span>Cotonou (COO) → Kinshasa (FIH) · Aérien</span></div>'+
+    '<div class="rowline"><span>Poids</span><span>12,40 kg</span></div>'+
+    '<div class="hr"></div>'+
+    '<div class="rowline"><span>Montant total dû</span><span>13,64 USD</span></div>'+
+    '<div class="rowline"><span>Paiement reçu</span><span>5 000 XOF (≈ 8,20 USD)</span></div>'+
+    '<div class="rowline"><span>Moyen · réf.</span><span>Mobile Money (M-Pesa) · MP-2026-000123</span></div>'+
+    '<div class="rowline"><span>Taux appliqué</span><span>1 XOF = 0,001640 USD (03/09/2026)</span></div>'+
+    '<div class="rowline"><span>Déjà encaissé (cumul)</span><span>8,64 USD</span></div>'+
+    '<div class="rowline"><b>SOLDE RESTANT</b><b>5,00 USD</b></div>'+
+    '<div class="hr"></div>'+
+    '<div class="rowline"><span>Statut de paiement</span><span>PARTIEL</span></div>'+
+    '<div class="rowline"><span>Encaissé par</span><span>A. Boni</span></div>'+
+    '<div class="wf-mono" style="font-size:10.5px;color:var(--ink-mute)">Mentions légales : {selon pays} · TVA 0 % · « Le futur du commerce africain »</div>'+
+    '<div class="wf-btnrow">'+B('‹ Retour à la fiche',{goto:'W-AGT-11'})+'</div>')};
+
+/* --------------------------------- routage & UI --------------------------------- */
+var GROUPS=['Authentification','Agent fret','Administration / DAF','Super-admin / Configuration','Client (public)','Documents'];
+var ORDER=Object.keys(S).sort(function(a,b){
+  if(S[a].g!==S[b].g) return S[a].g-S[b].g;
+  return a<b?-1:1;
+});
+var FLOWS={
+  enr:{label:"Enregistrement d’un colis",steps:['W-AGT-01','W-AGT-02','W-AGT-03','W-AGT-04','W-AGT-05']},
+  pay:{label:"Encaissement d’un paiement",steps:['W-AGT-08','W-AGT-09','W-AGT-11']},
+  suivi:{label:"Suivi par le client",steps:['W-PUB-01','W-PUB-02','W-PUB-03']},
+  cfg:{label:"Configuration & tarifs",steps:['W-SAD-03','W-SAD-04','W-ADM-04','W-ADM-05']}
+};
+
+var canvas=document.getElementById('canvas');
+var railEl=document.getElementById('rail');
+var railSel=document.getElementById('railSelect');
+var sidEl=document.getElementById('sid');
+var crumbEl=document.getElementById('crumb');
+var notesEl=document.getElementById('notes');
+var notesList=document.getElementById('notesList');
+var notesId=document.getElementById('notesId');
+var flowSel=document.getElementById('flow');
+var flowStep=document.getElementById('flowstep');
+var LS=window.localStorage;
+
+/* rail */
+(function buildRail(){
+  var html='';
+  GROUPS.forEach(function(name,gi){
+    html+='<div class="railGroup"><h2>'+E(name)+'</h2>';
+    ORDER.filter(function(id){return S[id].g===gi;}).forEach(function(id){
+      html+='<button class="railItem" data-goto="'+id+'"><span class="k">'+id+'</span><span class="t">'+E(S[id].t)+'</span></button>';
+    });
+    html+='</div>';
+  });
+  railEl.innerHTML=html;
+  var opt='';
+  GROUPS.forEach(function(name,gi){
+    opt+='<optgroup label="'+E(name)+'">';
+    ORDER.filter(function(id){return S[id].g===gi;}).forEach(function(id){
+      opt+='<option value="'+id+'">'+id+' — '+E(S[id].t)+'</option>';
+    });
+    opt+='</optgroup>';
+  });
+  railSel.innerHTML=opt;
+})();
+
+Object.keys(FLOWS).forEach(function(k){
+  var o=document.createElement('option'); o.value=k; o.textContent=FLOWS[k].label; flowSel.appendChild(o);
+});
+
+function currentFlow(){return FLOWS[flowSel.value]||null;}
+
+function render(id){
+  if(!S[id]) id=ORDER[0];
+  var sc=S[id];
+  canvas.innerHTML='<div><div class="hint"><span><b>'+id+'</b> — '+E(sc.t)+'</span>'+
+    '<span>Cliquez les éléments <b style="color:var(--accent)">orange au survol</b> pour naviguer.</span>'+
+    '<span>Raccourcis : <b>[</b> <b>]</b> écrans · <b>h</b> zones cliquables</span></div>'+
+    '<div class="frame '+(sc.w||'')+'">'+sc.html+'</div></div>';
+  sidEl.textContent=id;
+  crumbEl.textContent=sc.crumb||sc.t;
+  notesId.textContent=id;
+  notesList.innerHTML=(sc.notes||['(pas de note pour cet écran)']).map(function(n){return '<li>'+n+'</li>';}).join('');
+  Array.prototype.forEach.call(railEl.querySelectorAll('.railItem'),function(b){
+    b.classList.toggle('active',b.getAttribute('data-goto')===id);
+  });
+  railSel.value=id;
+  var f=currentFlow();
+  if(f){
+    var i=f.steps.indexOf(id);
+    flowStep.textContent=i>=0?('Étape '+(i+1)+'/'+f.steps.length):('hors parcours');
+  } else flowStep.textContent='';
+  try{LS.setItem('okapi.screen',id);}catch(e){}
+  canvas.scrollTop=0;
+}
+
+function go(id){ if(S[id]) location.hash=id; }
+
+function step(dir){
+  var cur=(location.hash||'').replace('#','')||ORDER[0];
+  var f=currentFlow();
+  var list=f?f.steps:ORDER;
+  var i=list.indexOf(cur);
+  if(i<0){ i=ORDER.indexOf(cur); list=ORDER; }
+  var n=list[(i+dir+list.length)%list.length];
+  go(n);
+}
+
+/* délégation des clics sur toute zone [data-goto] */
+document.addEventListener('click',function(ev){
+  var t=ev.target.closest('[data-goto]');
+  if(!t) return;
+  ev.preventDefault();
+  go(t.getAttribute('data-goto'));
+});
+railSel.addEventListener('change',function(){go(railSel.value);});
+document.getElementById('prev').addEventListener('click',function(){step(-1);});
+document.getElementById('next').addEventListener('click',function(){step(1);});
+flowSel.addEventListener('change',function(){
+  try{LS.setItem('okapi.flow',flowSel.value);}catch(e){}
+  var f=currentFlow(); if(f) go(f.steps[0]); else render((location.hash||'').replace('#',''));
+});
+
+/* toggles */
+var hotBtn=document.getElementById('hot');
+function setHot(on){ document.body.classList.toggle('show-hot',on); hotBtn.setAttribute('aria-pressed',on?'true':'false'); try{LS.setItem('okapi.hot',on?'1':'0');}catch(e){} }
+hotBtn.addEventListener('click',function(){ setHot(!document.body.classList.contains('show-hot')); });
+
+var notesBtn=document.getElementById('notesBtn');
+function setNotes(on){ notesEl.classList.toggle('open',on); notesBtn.setAttribute('aria-pressed',on?'true':'false'); try{LS.setItem('okapi.notes',on?'1':'0');}catch(e){} }
+notesBtn.addEventListener('click',function(){ setNotes(!notesEl.classList.contains('open')); });
+document.getElementById('notesClose').addEventListener('click',function(){ setNotes(false); });
+
+var themeBtn=document.getElementById('theme');
+themeBtn.addEventListener('click',function(){
+  var cur=document.documentElement.getAttribute('data-theme');
+  var next=cur==='dark'?'light':(cur==='light'?'dark':(matchMedia('(prefers-color-scheme: dark)').matches?'light':'dark'));
+  document.documentElement.setAttribute('data-theme',next);
+  try{LS.setItem('okapi.theme',next);}catch(e){}
+});
+
+document.addEventListener('keydown',function(ev){
+  if(ev.target.matches('input,textarea,select')) return;
+  if(ev.key===']') step(1);
+  else if(ev.key==='[') step(-1);
+  else if(ev.key==='h'||ev.key==='H') setHot(!document.body.classList.contains('show-hot'));
+});
+
+window.addEventListener('hashchange',function(){ render((location.hash||'').replace('#','')); });
+
+/* état initial */
+(function init(){
+  try{
+    var th=LS.getItem('okapi.theme'); if(th) document.documentElement.setAttribute('data-theme',th);
+    if(LS.getItem('okapi.hot')==='1') setHot(true);
+    if(LS.getItem('okapi.notes')==='1') setNotes(true);
+    var fl=LS.getItem('okapi.flow'); if(fl&&FLOWS[fl]) flowSel.value=fl;
+  }catch(e){}
+  var start=(location.hash||'').replace('#','');
+  if(!S[start]){ try{start=LS.getItem('okapi.screen');}catch(e){} }
+  if(!S[start]) start=ORDER[0];
+  if(location.hash.replace('#','')===start) render(start); else location.hash=start;
+})();
+})();
+</script>
