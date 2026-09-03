@@ -17,8 +17,10 @@ d'Okapi Logistics.
 | 3 | Modèle de données / schéma BDD | ✅ Livré (v1.1) | [`docs/03-modele-de-donnees.md`](docs/03-modele-de-donnees.md) + [`db/schema.sql`](db/schema.sql) |
 | 4 | Wireframes interfaces agent / admin / client | ✅ Livré (v1) | [`docs/04-wireframes.md`](docs/04-wireframes.md) + [`wireframes/index.html`](wireframes/index.html) |
 | 5 | Application fonctionnelle (back-office + suivi public) | ✅ Livré (MVP) | `packages/`, `apps/` |
-| 6 | Manuel d'utilisation agents + administration | ⏳ À venir | `docs/05-manuel-*.md` |
-| 7 | Plan de déploiement multi-pays (FR / CN / NG) | ⏳ À venir | `docs/06-plan-deploiement.md` |
+| — | Manuel d'installation et de configuration | ✅ Livré | [`docs/05-manuel-installation-configuration.md`](docs/05-manuel-installation-configuration.md) |
+| 6 | Manuel d'utilisation agent | 🚧 En cours | [`docs/06-manuel-agent.md`](docs/06-manuel-agent.md) |
+| 6 | Manuel d'utilisation administration | 🚧 En cours | [`docs/07-manuel-administration.md`](docs/07-manuel-administration.md) |
+| 7 | Plan de déploiement multi-pays (FR / CN / NG) | 🚧 En cours | [`docs/08-plan-deploiement-multipays.md`](docs/08-plan-deploiement-multipays.md) |
 
 **Ce dépôt contient aujourd'hui les livrables 0 à 4.** Les 15 questions ouvertes ont été
 tranchées par le client le 2026-09-03 ; voir le registre des décisions. Les documents 1 à 3
