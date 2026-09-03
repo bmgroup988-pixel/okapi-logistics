@@ -11,6 +11,18 @@ export const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
+  S3_ENDPOINT: z.string().url().default('http://localhost:9000'),
+  S3_REGION: z.string().default('eu-west-par'),
+  S3_BUCKET: z.string().default('okapi-photos'),
+  S3_ACCESS_KEY: z.string().default('minioadmin'),
+  S3_SECRET_KEY: z.string().default('minioadmin'),
+  S3_FORCE_PATH_STYLE: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  S3_PUBLIC_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  S3_CLIENT_URL_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+
   REFERENCE_CURRENCY: z.string().length(3).default('USD'),
   FX_PROVIDER: z.string().default('exchangerate.host'),
   FX_API_BASE: z.string().url().default('https://api.exchangerate.host'),

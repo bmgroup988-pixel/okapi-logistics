@@ -173,12 +173,13 @@ model City {
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  country          Country  @relation(fields: [countryId], references: [id])
+  country          Country       @relation(fields: [countryId], references: [id])
   agencies         Agency[]
-  parcelsAsOrigin  Parcel[] @relation("ParcelOriginCity")
-  parcelsAsDest    Parcel[] @relation("ParcelDestinationCity")
-  tariffsAsOrigin  Tariff[] @relation("TariffOriginCity")
-  tariffsAsDest    Tariff[] @relation("TariffDestinationCity")
+  parcelsAsOrigin  Parcel[]      @relation("ParcelOriginCity")
+  parcelsAsDest    Parcel[]      @relation("ParcelDestinationCity")
+  tariffsAsOrigin  Tariff[]      @relation("TariffOriginCity")
+  tariffsAsDest    Tariff[]      @relation("TariffDestinationCity")
+  eventsAtLocation ParcelEvent[] @relation("EventLocationCity")
 
   @@index([countryId])
   @@map("cities")
@@ -591,8 +592,9 @@ model ParcelEvent {
   createdById      String?      @map("created_by") @db.Uuid
   createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  parcel    Parcel @relation(fields: [parcelId], references: [id])
-  createdBy User?  @relation(fields: [createdById], references: [id])
+  parcel       Parcel @relation(fields: [parcelId], references: [id])
+  createdBy    User?  @relation(fields: [createdById], references: [id])
+  locationCity City?  @relation("EventLocationCity", fields: [locationCityId], references: [id])
 
   @@index([parcelId, createdAt])
   @@map("parcel_events")

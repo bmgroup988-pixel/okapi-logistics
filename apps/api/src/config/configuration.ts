@@ -9,6 +9,16 @@ export interface AppConfig {
   corsOrigins: string[];
   database: { url: string };
   redis: { url: string };
+  storage: {
+    endpoint: string;
+    region: string;
+    bucket: string;
+    accessKey: string;
+    secretKey: string;
+    forcePathStyle: boolean;
+    internalTtlSeconds: number;
+    clientTtlSeconds: number;
+  };
   fx: {
     referenceCurrency: string;
     provider: string;
@@ -38,6 +48,16 @@ export function buildConfig(env: Env): AppConfig {
       .filter(Boolean),
     database: { url: env.DATABASE_URL },
     redis: { url: env.REDIS_URL },
+    storage: {
+      endpoint: env.S3_ENDPOINT.replace(/\/+$/, ''),
+      region: env.S3_REGION,
+      bucket: env.S3_BUCKET,
+      accessKey: env.S3_ACCESS_KEY,
+      secretKey: env.S3_SECRET_KEY,
+      forcePathStyle: env.S3_FORCE_PATH_STYLE,
+      internalTtlSeconds: env.S3_PUBLIC_URL_TTL_SECONDS,
+      clientTtlSeconds: env.S3_CLIENT_URL_TTL_SECONDS,
+    },
     fx: {
       referenceCurrency: env.REFERENCE_CURRENCY,
       provider: env.FX_PROVIDER,

@@ -63,5 +63,27 @@ src/
 - Autorisation : `JwtAuthGuard` + `PermissionsGuard` globaux ; `@Public()`, `@RequirePermissions()`, `@CurrentUser()`.
 - Journal d'audit (`AuditService`) : LOGIN / LOGIN_FAILED / CONFIG_CHANGE / UPDATE… (PII expurgées).
 
-Les modules métier (colis, paiements, facturation, FX, notifications, suivi public,
-reporting) sont ajoutés aux étapes 4 à 7.
+## Colis (étape 4)
+
+| Méthode | Route | Permission | Notes |
+|---------|-------|-----------|-------|
+| POST | `/api/v1/parcels` | `parcel:create` | en-tête `Idempotency-Key` (RG-12) ; calcule prix (D6), convertit vers devise de facturation puis USD, génère le n° de suivi (séquentiel par destination, mensuel — D2), crée expéditeur/destinataire + évènement + consentement |
+| GET | `/api/v1/parcels` | `parcel:read` | filtres statut / paiement / destination / agence / pays / mode / période / `q` ; **périmètre appliqué** (RG-10) |
+| GET | `/api/v1/parcels/:id` | `parcel:read` | fiche complète (contacts, évènements, photos signées) |
+| PATCH | `/api/v1/parcels/:id` | `parcel:update` | uniquement au statut `ENREGISTRE` |
+| POST | `/api/v1/parcels/:id/transition` | `parcel:transition` | machine à états (RG-07) ; blocage/dérogation livraison impayée selon le pays (RG-08) ; verrouille les photos à `EN_TRANSIT` ; met en file les notifications |
+| POST | `/api/v1/parcels/:id/cancel` | `parcel:cancel` | motif obligatoire |
+| GET | `/api/v1/parcels/:id/events` | `parcel:read` | historique |
+| POST | `/api/v1/parcels/:id/photos/presign` | `parcel:photo:write` | URL PUT S3 signée (l'API ne relaie pas le binaire) |
+| POST | `/api/v1/parcels/:id/photos` | `parcel:photo:write` | confirme l'upload `{ storageKey, sha256, bytes, mimeType, isPrimary }` |
+| GET | `/api/v1/parcels/:id/photos` | `parcel:read` | URLs GET signées (≤ 15 min) |
+
+Services transverses introduits : `SequenceService` (compteurs atomiques),
+`FxService` (conversion via devise pivot USD, `FX_RATE_MISSING` si taux absent),
+`PricingService` (résolution tarif ville→ville puis corridor, `TARIFF_MISSING`),
+`StorageService` (pré-signature SigV4 maison, compatible OVHcloud / MinIO),
+`NotificationsService` (journalisation ; envoi effectif branché à l'étape 6),
+`IdempotencyService`.
+
+Les modules restants (paiements + facturation, FX admin + tarifs admin + sync,
+suivi public, reporting) arrivent aux étapes 5 à 7.

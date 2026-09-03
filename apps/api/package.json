@@ -15,7 +15,7 @@
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "node --test --import ts-node/register \"src/**/*.test.ts\"",
+    "test": "node --require ts-node/register --test \"src/**/*.test.ts\"",
     "postinstall": "prisma generate"
   },
   "prisma": {

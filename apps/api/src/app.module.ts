@@ -7,12 +7,19 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PermissionsGuard } from './auth/permissions.guard';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
+import { CommonModule } from './common/common.module';
 import { RequestIdMiddleware } from './common/request-id.middleware';
 import { buildConfig } from './config/configuration';
 import { validateEnv, type Env } from './config/env.schema';
+import { FxModule } from './fx/fx.module';
 import { HealthModule } from './health/health.module';
 import { IamModule } from './iam/iam.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ParcelsModule } from './parcels/parcels.module';
+import { PricingModule } from './pricing/pricing.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { SequenceModule } from './sequences/sequence.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -29,9 +36,16 @@ import { PrismaModule } from './prisma/prisma.module';
       },
     }),
     PrismaModule,
+    CommonModule,
     AuditModule,
+    SequenceModule,
+    FxModule,
+    PricingModule,
+    StorageModule,
+    NotificationsModule,
     AuthModule,
     IamModule,
+    ParcelsModule,
     HealthModule,
   ],
   providers: [
