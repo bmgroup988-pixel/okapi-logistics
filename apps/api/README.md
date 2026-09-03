@@ -85,5 +85,24 @@ Services transverses introduits : `SequenceService` (compteurs atomiques),
 `NotificationsService` (journalisation ; envoi effectif branché à l'étape 6),
 `IdempotencyService`.
 
-Les modules restants (paiements + facturation, FX admin + tarifs admin + sync,
-suivi public, reporting) arrivent aux étapes 5 à 7.
+## Paiements & facturation (étape 5)
+
+| Méthode | Route | Permission | Notes |
+|---------|-------|-----------|-------|
+| POST | `/api/v1/parcels/:id/payments` | `payment:create` | `Idempotency-Key` ; devise libre → conversion figée vers la devise de facturation ET USD (EF-PAY-05) ; `CASH` = confirmé d'emblée, sinon `EN_ATTENTE` (EF-PAY-12) ; recalcule solde + statut (RG-03) ; reçu PDF + notification si confirmé |
+| GET | `/api/v1/parcels/:id/payments` | `payment:create` | historique |
+| GET | `/api/v1/parcels/:id/documents` | `document:read` | étiquette, reçus, factures, avoirs — URLs signées |
+| POST | `/api/v1/payments/:id/confirm` | `payment:confirm` | `EN_ATTENTE` → `CONFIRME` |
+| POST | `/api/v1/payments/:id/fail` | `payment:confirm` | `EN_ATTENTE` → `ECHOUE` |
+| POST | `/api/v1/payments/:id/refund` | `payment:refund` | crée un paiement lié `REMBOURSE` + avoir ; motif obligatoire (EF-PAY-09) |
+
+- **Facturation** (`BillingService`) : à l'enregistrement → étiquette 100×150 mm
+  (QR = lien de suivi) + reçu d'enregistrement ; à chaque paiement confirmé → reçu
+  de paiement ; à la clôture (`PAYE`) → facture ; à un remboursement → avoir.
+- Numérotation continue **par pays** (`ISO2-AAAA-000000`), pièces `invoices`
+  immuables (RG-09). TVA 0 par défaut (D13).
+- PDF via `pdf-lib` + `qrcode` (purs JS) ; dépôt objet côté serveur par URL PUT
+  signée (SigV4) ; échec d'upload non bloquant (PDF régénérable).
+
+Modules restants : FX admin + tarifs admin + sync exchangerate.host (étape 6),
+suivi public (étape 7), reporting.

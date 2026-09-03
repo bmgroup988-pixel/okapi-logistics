@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import {
   jwtSign,
   jwtVerify,
@@ -41,7 +42,6 @@ test('TOTP : un code généré maintenant est accepté', () => {
   // reproduit HOTP pour le compteur courant
   const step = 30;
   const counter = Math.floor(Date.now() / 1000 / step);
-  const { createHmac } = require('node:crypto') as typeof import('node:crypto');
   const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   let bits = 0;
   let value = 0;

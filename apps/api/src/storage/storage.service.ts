@@ -39,6 +39,19 @@ export class StorageService {
     };
   }
 
+  /** Dépose un objet côté serveur via l'URL PUT signée (documents PDF générés). */
+  async putObject(key: string, body: Uint8Array, contentType: string): Promise<void> {
+    const { url } = this.presignPut(key, 300);
+    const res = await fetch(url, {
+      method: 'PUT',
+      body: Buffer.from(body),
+      headers: { 'content-type': contentType },
+    });
+    if (!res.ok) {
+      throw new Error(`Échec de l'upload objet (${res.status} ${res.statusText})`);
+    }
+  }
+
   presignGet(key: string, scope: 'internal' | 'client' = 'internal'): { url: string; expiresIn: number } {
     const o = this.opts();
     const expiresIn =

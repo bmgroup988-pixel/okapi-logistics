@@ -1,0 +1,109 @@
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import QRCode from 'qrcode';
+
+const NAVY = rgb(0x17 / 255, 0x06 / 255, 0x55 / 255);
+const INK = rgb(0.15, 0.15, 0.18);
+const MUTE = rgb(0.42, 0.42, 0.46);
+
+export interface LabelData {
+  trackingNumber: string;
+  originCode: string;
+  destinationCode: string;
+  weightKg: string;
+  transportMode: string;
+  registeredAt: string; // ISO
+  senderName: string;
+  senderPhone: string | null;
+  recipientName: string;
+  recipientPhone: string | null;
+  trackingUrl: string;
+}
+
+export interface ReceiptLine {
+  label: string;
+  value: string;
+}
+
+export interface ReceiptData {
+  title: string; // "REÇU" / "FACTURE" / "AVOIR"
+  number: string;
+  issuedAt: string;
+  agencyName: string;
+  agencyPhone: string | null;
+  contactEmail: string;
+  trackingNumber: string;
+  lines: ReceiptLine[];
+  legalMentions: string;
+  slogan: string;
+}
+
+/** Étiquette colis 100 × 150 mm (≈ 283 × 425 pt) — EF-ENR-10. */
+export async function renderLabelPdf(d: LabelData): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([283, 425]);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+  page.drawRectangle({ x: 8, y: 8, width: 267, height: 409, borderColor: NAVY, borderWidth: 1.5 });
+  page.drawText('OKAPI LOGISTICS', { x: 18, y: 396, size: 12, font: bold, color: NAVY });
+  page.drawText(d.transportMode === 'AIR' ? 'Aerien' : 'Maritime', { x: 210, y: 398, size: 9, font, color: MUTE });
+
+  const qrPng = await QRCode.toBuffer(d.trackingUrl, { type: 'png', margin: 1, width: 150 });
+  const qrImg = await doc.embedPng(qrPng);
+  page.drawImage(qrImg, { x: 18, y: 250, width: 120, height: 120 });
+
+  page.drawText(d.trackingNumber, { x: 150, y: 330, size: 13, font: bold, color: INK });
+  page.drawText(`${d.originCode}  ->  ${d.destinationCode}`, { x: 150, y: 308, size: 11, font, color: INK });
+  page.drawText(`${d.weightKg} kg`, { x: 150, y: 290, size: 10, font, color: MUTE });
+  page.drawText(new Date(d.registeredAt).toISOString().slice(0, 10), { x: 150, y: 274, size: 10, font, color: MUTE });
+
+  let y = 220;
+  const row = (k: string, v: string) => {
+    page.drawText(k, { x: 18, y, size: 8, font: bold, color: MUTE });
+    page.drawText(v, { x: 18, y: y - 12, size: 10, font, color: INK });
+    y -= 34;
+  };
+  row('EXPEDITEUR', `${d.senderName}${d.senderPhone ? ' - ' + d.senderPhone : ''}`);
+  row('DESTINATAIRE', `${d.recipientName}${d.recipientPhone ? ' - ' + d.recipientPhone : ''}`);
+
+  page.drawText('Suivi :', { x: 18, y: 60, size: 8, font: bold, color: MUTE });
+  page.drawText(d.trackingUrl, { x: 18, y: 48, size: 7, font, color: NAVY });
+
+  return doc.save();
+}
+
+/** Reçu / facture / avoir A5 (≈ 420 × 595 pt) — EF-PAY-07 / RG-09. */
+export async function renderReceiptPdf(d: ReceiptData): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([420, 595]);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+  page.drawText('OKAPI LOGISTICS', { x: 32, y: 555, size: 14, font: bold, color: NAVY });
+  page.drawText(`${d.title} N° ${d.number}`, { x: 32, y: 534, size: 11, font: bold, color: INK });
+  page.drawText(new Date(d.issuedAt).toISOString().replace('T', ' ').slice(0, 16), {
+    x: 300,
+    y: 534,
+    size: 9,
+    font,
+    color: MUTE,
+  });
+  page.drawText(`${d.agencyName}${d.agencyPhone ? ' - ' + d.agencyPhone : ''}`, { x: 32, y: 518, size: 9, font, color: MUTE });
+  page.drawText(d.contactEmail, { x: 32, y: 506, size: 9, font, color: MUTE });
+  page.drawText(`Colis : ${d.trackingNumber}`, { x: 32, y: 486, size: 10, font: bold, color: INK });
+
+  page.drawLine({ start: { x: 32, y: 476 }, end: { x: 388, y: 476 }, thickness: 0.75, color: MUTE });
+
+  let y = 456;
+  for (const l of d.lines) {
+    page.drawText(l.label, { x: 32, y, size: 9, font, color: MUTE });
+    page.drawText(l.value, { x: 388 - bold.widthOfTextAtSize(l.value, 10), y, size: 10, font: bold, color: INK });
+    y -= 20;
+  }
+
+  page.drawLine({ start: { x: 32, y: y - 4 }, end: { x: 388, y: y - 4 }, thickness: 0.75, color: MUTE });
+  page.drawText(d.legalMentions, { x: 32, y: 44, size: 7, font, color: MUTE, maxWidth: 356, lineHeight: 9 });
+  page.drawText(d.slogan, { x: 32, y: 24, size: 8, font: bold, color: NAVY });
+
+  return doc.save();
+}

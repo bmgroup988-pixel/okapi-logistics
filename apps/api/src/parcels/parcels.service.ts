@@ -21,9 +21,11 @@ import {
   type ParcelUpdateInput,
 } from '@okapi/shared';
 import type { z } from 'zod';
+import { Logger } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
 import type { CurrentUser } from '../auth/current-user';
 import { canActOnAgency, defaultAgencyId, parcelScopeWhere } from '../auth/scope';
+import { BillingService } from '../billing/billing.service';
 import { paginate } from '../common/api-response';
 import { IdempotencyService } from '../common/idempotency.service';
 import { FxService } from '../fx/fx.service';
@@ -45,8 +47,11 @@ export class ParcelsService {
     private readonly notifications: NotificationsService,
     private readonly idempotency: IdempotencyService,
     private readonly sequences: SequenceService,
+    private readonly billing: BillingService,
     private readonly audit: AuditService,
   ) {}
+
+  private readonly logger = new Logger(ParcelsService.name);
 
   /* ------------------------------------------------------------ création */
   async create(
@@ -61,6 +66,15 @@ export class ParcelsService {
       fingerprint,
       async () => {
         const parcel = await this.doCreate(input, user, opts.requestId ?? null);
+        // Étiquette + reçu d'enregistrement (EF-ENR-10) — sans bloquer la création.
+        try {
+          await this.billing.onParcelRegistered(parcel.id);
+        } catch (err) {
+          this.logger.error(
+            `Génération des documents différée pour ${parcel.trackingNumber}`,
+            err as Error,
+          );
+        }
         return { status: 201, body: await this.toDetailDto(parcel.id) };
       },
     );
