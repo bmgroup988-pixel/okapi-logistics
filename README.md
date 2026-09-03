@@ -15,8 +15,8 @@ d'Okapi Logistics.
 | 1 | Spécifications techniques détaillées | ✅ Livré (v1.1) | [`docs/01-specifications-techniques.md`](docs/01-specifications-techniques.md) |
 | 2 | Architecture (back-end + BDD centralisée) | ✅ Livré (v1.1) | [`docs/02-architecture.md`](docs/02-architecture.md) |
 | 3 | Modèle de données / schéma BDD | ✅ Livré (v1.1) | [`docs/03-modele-de-donnees.md`](docs/03-modele-de-donnees.md) + [`db/schema.sql`](db/schema.sql) |
-| 4 | Wireframes interfaces agent / admin / client | ✅ Livré (v1) | [`docs/04-wireframes.md`](docs/04-wireframes.md) |
-| 5 | Application fonctionnelle (back-office + suivi public) | ⏳ À venir | `apps/` |
+| 4 | Wireframes interfaces agent / admin / client | ✅ Livré (v1) | [`docs/04-wireframes.md`](docs/04-wireframes.md) + [`wireframes/index.html`](wireframes/index.html) |
+| 5 | Application fonctionnelle (back-office + suivi public) | 🚧 En cours | `packages/`, `apps/` |
 | 6 | Manuel d'utilisation agents + administration | ⏳ À venir | `docs/05-manuel-*.md` |
 | 7 | Plan de déploiement multi-pays (FR / CN / NG) | ⏳ À venir | `docs/06-plan-deploiement.md` |
 
@@ -61,15 +61,56 @@ okapi-logistics/
 │   ├── 05-manuel-administration.md (à venir)
 │   └── 06-plan-deploiement.md      (à venir)
 ├── db/
-│   ├── schema.sql                  DDL PostgreSQL de référence
-│   └── seed/                       jeux de données de référence (villes, devises…)
+│   └── schema.sql                  DDL PostgreSQL de référence
+├── infra/
+│   └── docker-compose.yml          services de dev : Postgres, Redis, MinIO, Mailhog
 ├── apps/
-│   ├── api/                        back-end NestJS            (à venir)
-│   ├── back-office/                SPA React agents + admin   (à venir)
-│   └── suivi-public/               site public de suivi       (à venir)
+│   ├── api/                        back-end NestJS            (à venir — étape 2)
+│   ├── back-office/                SPA React agents + admin   (à venir — étape 8)
+│   └── suivi-public/               site public de suivi       (à venir — étape 7)
 └── packages/
-    ├── shared/                     types, contrats, i18n partagés (à venir)
-    └── config/                     configuration lint / tsconfig  (à venir)
+    └── shared/                     contrats, énums, schémas Zod, calculs monétaires, i18n
+```
+
+---
+
+## Développement
+
+Prérequis : **Node.js 20+** (voir `.nvmrc`), et **Docker Desktop** pour les services locaux.
+
+```bash
+# 1. dépendances (npm workspaces)
+npm install
+
+# 2. services locaux (Postgres, Redis, MinIO, Mailhog)
+npm run infra:up
+
+# 3. variables d'environnement
+cp .env.example .env
+
+# 4. (étape 2+) migrations + jeu de données de référence
+npm run db:migrate
+npm run db:seed
+
+# 5. lancer une application
+npm run dev:api           # API REST        http://localhost:3000
+npm run dev:public        # suivi public    http://localhost:3001
+npm run dev:back-office   # back-office      http://localhost:5173
+```
+
+Qualité : `npm run typecheck` · `npm test` · `npm run lint` (tous les workspaces).
+
+### Paquet `@okapi/shared`
+
+Cœur métier **pur et testé**, réutilisé par l'API et les deux fronts :
+calcul du numéro de suivi (par destination, mensuel — D2), arithmétique décimale exacte
+sur `bigint` (aucun flottant), conversion multi-devises via devise pivot (USD),
+calcul du prix (`prix_par_kg × poids` + options — D6), calcul du statut de paiement et
+du solde (dérivés — RG-03), machine à états du colis (RG-07), permissions RBAC,
+schémas Zod partagés, modèles de notification fr/en/zh.
+
+```bash
+npm test --workspace @okapi/shared
 ```
 
 ---

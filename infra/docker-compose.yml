@@ -1,0 +1,68 @@
+# Environnement de développement local — Okapi Logistics
+# Nécessite Docker Desktop. En production, ces services sont des offres managées
+# OVHcloud (PostgreSQL, Object Storage) en région UE + Redis managé.
+#
+#   docker compose -f infra/docker-compose.yml up -d
+#
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: okapi-postgres
+    environment:
+      POSTGRES_USER: okapi
+      POSTGRES_PASSWORD: okapi
+      POSTGRES_DB: okapi
+    ports:
+      - "5432:5432"
+    volumes:
+      - okapi-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U okapi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: okapi-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - okapi-redis:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: okapi-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - okapi-minio:/data
+
+  createbucket:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin) do echo 'attente MinIO...' && sleep 1; done;
+      /usr/bin/mc mb --ignore-existing local/okapi-photos;
+      /usr/bin/mc anonymous set none local/okapi-photos;
+      exit 0;
+      "
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: okapi-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  okapi-pg:
+  okapi-redis:
+  okapi-minio:

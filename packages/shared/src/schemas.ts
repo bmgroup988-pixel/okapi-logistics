@@ -1,0 +1,198 @@
+import { z } from 'zod';
+import {
+  TRANSPORT_MODES,
+  PAYMENT_METHODS,
+  MOBILE_MONEY_PROVIDERS,
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_TRIGGERS,
+} from './enums.js';
+
+/** Schémas de validation partagés front / back (Zod). */
+
+const decimalString = (opts?: { min?: number }) =>
+  z
+    .string()
+    .regex(/^-?\d+(\.\d+)?$/, 'nombre décimal attendu (chaîne)')
+    .refine((v) => opts?.min === undefined || Number(v) >= opts.min, {
+      message: `doit être >= ${opts?.min}`,
+    });
+
+const positiveDecimalString = z.string().regex(/^\d+(\.\d+)?$/, 'nombre décimal positif attendu');
+const weightString = z.string().regex(/^\d+(\.\d{1,2})?$/, 'poids en kg, max 2 décimales');
+const currencyCode = z.string().regex(/^[A-Z]{3}$/, 'code ISO 4217 (3 lettres majuscules)');
+const uuid = z.string().uuid();
+
+export const localeSchema = z.enum(['fr', 'en', 'zh']);
+export type Locale = z.infer<typeof localeSchema>;
+
+export const moneyInputSchema = z.object({
+  amount: decimalString({ min: 0 }),
+  currency: currencyCode,
+});
+
+export const contactSchema = z.object({
+  name: z.string().min(1).max(160),
+  phone: z.string().min(3).max(32).optional().nullable(),
+  email: z.string().email().max(200).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+  cityLabel: z.string().max(160).optional().nullable(),
+  countryLabel: z.string().max(160).optional().nullable(),
+  idDocumentRef: z.string().max(120).optional().nullable(),
+});
+
+export const consentSchema = z.object({
+  given: z.literal(true),
+  textVersion: z.string().min(1).max(64),
+});
+
+export const parcelCreateSchema = z.object({
+  sender: contactSchema,
+  recipient: contactSchema,
+  originCityId: uuid,
+  destinationCityId: uuid,
+  transportMode: z.enum(TRANSPORT_MODES),
+  weightKg: weightString,
+  contentNature: z.string().min(1).max(500),
+  declaredValue: moneyInputSchema.optional(),
+  billingCurrency: currencyCode.optional(),
+  pricingOverridePct: decimalString().optional(),
+  clientChannel: z.enum(NOTIFICATION_CHANNELS).optional().nullable(),
+  clientLocale: localeSchema.default('fr'),
+  consent: consentSchema,
+});
+export type ParcelCreateInput = z.infer<typeof parcelCreateSchema>;
+
+export const parcelUpdateSchema = parcelCreateSchema
+  .pick({
+    sender: true,
+    recipient: true,
+    contentNature: true,
+    declaredValue: true,
+    weightKg: true,
+    clientChannel: true,
+    clientLocale: true,
+  })
+  .partial();
+export type ParcelUpdateInput = z.infer<typeof parcelUpdateSchema>;
+
+export const parcelTransitionSchema = z.object({
+  to: z.enum(['EN_TRANSIT', 'ARRIVE', 'LIVRE', 'RETOURNE']),
+  locationCityId: uuid.optional().nullable(),
+  locationLabel: z.string().max(160).optional().nullable(),
+  note: z.string().max(1000).optional().nullable(),
+  visibleToClient: z.boolean().default(true),
+  /** justification obligatoire pour livrer avec un solde impayé — RG-08 */
+  unpaidOverrideReason: z.string().max(500).optional().nullable(),
+});
+export type ParcelTransitionInput = z.infer<typeof parcelTransitionSchema>;
+
+export const parcelCancelSchema = z.object({
+  reason: z.string().min(3).max(500),
+});
+
+export const paymentCreateSchema = z
+  .object({
+    amount: positiveDecimalString,
+    currency: currencyCode,
+    method: z.enum(PAYMENT_METHODS),
+    mobileMoneyProvider: z.enum(MOBILE_MONEY_PROVIDERS).optional().nullable(),
+    externalRef: z.string().max(200).optional().nullable(),
+    receivedAt: z.string().datetime().optional(),
+    note: z.string().max(1000).optional().nullable(),
+  })
+  .refine((d) => d.method !== 'MOBILE_MONEY' || !!d.mobileMoneyProvider, {
+    message: 'mobileMoneyProvider est requis pour un paiement MOBILE_MONEY',
+    path: ['mobileMoneyProvider'],
+  });
+export type PaymentCreateInput = z.infer<typeof paymentCreateSchema>;
+
+export const paymentRefundSchema = z.object({
+  amount: positiveDecimalString.optional(),
+  reason: z.string().min(3).max(500),
+});
+
+export const photoConfirmSchema = z.object({
+  storageKey: z.string().min(1).max(400),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/, 'empreinte SHA-256 hexadécimale'),
+  bytes: z.number().int().positive(),
+  mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  isPrimary: z.boolean().default(false),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+  otp: z
+    .string()
+    .regex(/^\d{6}$/)
+    .optional(),
+});
+
+export const refreshSchema = z.object({
+  refreshToken: z.string().min(1),
+});
+
+export const manualRateSchema = z.object({
+  baseCurrency: currencyCode,
+  /** 1 baseCurrency = rate (devise de référence) */
+  rate: positiveDecimalString,
+  effectiveFrom: z.string().datetime().optional(),
+  note: z.string().max(500).optional(),
+});
+
+export const tariffUpsertSchema = z
+  .object({
+    corridorId: uuid.optional().nullable(),
+    originCityId: uuid.optional().nullable(),
+    destinationCityId: uuid,
+    mode: z.enum(TRANSPORT_MODES),
+    currency: currencyCode,
+    pricePerKg: positiveDecimalString,
+    fixedFee: positiveDecimalString.default('0'),
+    minCharge: positiveDecimalString.default('0'),
+    adValoremEnabled: z.boolean().default(false),
+    adValoremRate: positiveDecimalString.default('0'),
+    overrideMin: decimalString().default('-0.15'),
+    overrideMax: decimalString().default('0.15'),
+    validFrom: z.string().date().optional(),
+  })
+  .refine((d) => !!d.corridorId || (!!d.originCityId && !!d.destinationCityId), {
+    message: 'un corridor ou un couple (ville origine, ville destination) est requis',
+    path: ['corridorId'],
+  });
+
+export const quoteRequestSchema = z.object({
+  originCityId: uuid,
+  destinationCityId: uuid,
+  mode: z.enum(TRANSPORT_MODES),
+  weightKg: weightString,
+  declaredValue: moneyInputSchema.optional(),
+  billingCurrency: currencyCode.optional(),
+});
+
+export const notificationTemplateSchema = z.object({
+  trigger: z.enum(NOTIFICATION_TRIGGERS),
+  channel: z.enum(NOTIFICATION_CHANNELS),
+  locale: localeSchema,
+  subject: z.string().max(200).optional().nullable(),
+  body: z.string().min(1).max(4000),
+  isActive: z.boolean().default(true),
+});
+
+export const paginationSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  sort: z.string().max(64).optional(),
+});
+
+export const parcelListQuerySchema = paginationSchema.extend({
+  status: z.string().optional(),
+  paymentStatus: z.string().optional(),
+  destinationCityId: uuid.optional(),
+  agencyId: uuid.optional(),
+  countryId: uuid.optional(),
+  transportMode: z.enum(TRANSPORT_MODES).optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  q: z.string().max(120).optional(),
+});
