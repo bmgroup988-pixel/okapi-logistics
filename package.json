@@ -21,8 +21,21 @@
     "dev:back-office": "npm run dev --workspace @okapi/back-office",
     "db:generate": "npm run prisma:generate --workspace @okapi/api",
     "db:migrate": "npm run prisma:migrate --workspace @okapi/api",
+    "db:constraints": "npm run db:constraints --workspace @okapi/api",
     "db:seed": "npm run seed --workspace @okapi/api",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "argon2@0.41.1": true,
+    "prisma@6.19.3": true
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.14.0",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.69.0"
   }
 }

@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "description": "Contrats partagés Okapi Logistics : types, énumérations, schémas Zod, calculs monétaires, i18n.",
-  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
