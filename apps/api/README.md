@@ -104,5 +104,23 @@ Services transverses introduits : `SequenceService` (compteurs atomiques),
 - PDF via `pdf-lib` + `qrcode` (purs JS) ; dépôt objet côté serveur par URL PUT
   signée (SigV4) ; échec d'upload non bloquant (PDF régénérable).
 
-Modules restants : FX admin + tarifs admin + sync exchangerate.host (étape 6),
-suivi public (étape 7), reporting.
+## Taux, tarifs & configuration (étape 6)
+
+| Méthode | Route | Permission |
+|---------|-------|-----------|
+| GET | `/api/v1/exchange-rates?from=&to=&at=&amount=` | `fx:read` |
+| GET | `/api/v1/admin/exchange-rates` | `fx:read` — dernier taux par devise + âge + `stale` |
+| GET | `/api/v1/admin/exchange-rates/:base/history` | `fx:read` |
+| POST | `/api/v1/admin/exchange-rates` | `fx:write` — saisie manuelle (prévaut) |
+| POST | `/api/v1/admin/exchange-rates/sync` | `fx:write` — force la synchro exchangerate.host |
+| GET | `/api/v1/admin/tariffs` | `tariff:read` |
+| POST | `/api/v1/admin/tariffs` | `tariff:write` — nouvelle version datée, clôt la précédente |
+| POST | `/api/v1/pricing/quote` | `tariff:read` — aperçu prix (W-AGT-04) |
+| GET | `/api/v1/public/branding` · `/public/content` · `/public/content/:key` | public |
+| GET | `/api/v1/admin/settings` · PUT `/admin/settings/:key` · PUT `/admin/content/:key` | `config:read` / `config:write` |
+
+`FxSyncService` : synchronisation exchangerate.host au démarrage puis toutes les
+6 h (en prod : `@nestjs/schedule` + `@Cron(FX_SYNC_CRON)`), résiliente (derniers
+taux conservés en cas d'échec), un taux `MANUAL` récent prévaut.
+
+Modules restants : suivi public (étape 7), back-office (étape 8), reporting.

@@ -21,7 +21,9 @@ import { PaymentsModule } from './payments/payments.module';
 import { PricingModule } from './pricing/pricing.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SequenceModule } from './sequences/sequence.module';
+import { SettingsModule } from './settings/settings.module';
 import { StorageModule } from './storage/storage.module';
+import { TariffsModule } from './tariffs/tariffs.module';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { StorageModule } from './storage/storage.module';
     BillingModule,
     AuthModule,
     IamModule,
+    SettingsModule,
+    TariffsModule,
     ParcelsModule,
     PaymentsModule,
     HealthModule,
