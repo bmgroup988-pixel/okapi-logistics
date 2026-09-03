@@ -16,7 +16,7 @@ d'Okapi Logistics.
 | 2 | Architecture (back-end + BDD centralisée) | ✅ Livré (v1.1) | [`docs/02-architecture.md`](docs/02-architecture.md) |
 | 3 | Modèle de données / schéma BDD | ✅ Livré (v1.1) | [`docs/03-modele-de-donnees.md`](docs/03-modele-de-donnees.md) + [`db/schema.sql`](db/schema.sql) |
 | 4 | Wireframes interfaces agent / admin / client | ✅ Livré (v1) | [`docs/04-wireframes.md`](docs/04-wireframes.md) + [`wireframes/index.html`](wireframes/index.html) |
-| 5 | Application fonctionnelle (back-office + suivi public) | 🚧 En cours | `packages/`, `apps/` |
+| 5 | Application fonctionnelle (back-office + suivi public) | ✅ Livré (MVP) | `packages/`, `apps/` |
 | 6 | Manuel d'utilisation agents + administration | ⏳ À venir | `docs/05-manuel-*.md` |
 | 7 | Plan de déploiement multi-pays (FR / CN / NG) | ⏳ À venir | `docs/06-plan-deploiement.md` |
 
@@ -65,12 +65,31 @@ okapi-logistics/
 ├── infra/
 │   └── docker-compose.yml          services de dev : Postgres, Redis, MinIO, Mailhog
 ├── apps/
-│   ├── api/                        back-end NestJS            (à venir — étape 2)
-│   ├── back-office/                SPA React agents + admin   (à venir — étape 8)
-│   └── suivi-public/               site public de suivi       (à venir — étape 7)
+│   ├── api/                        back-end NestJS 11 + Prisma 6 (auth, colis, paiements,
+│   │                               facturation, FX, tarifs, config, suivi public, référentiels)
+│   ├── back-office/                SPA React 19 + Vite (agent + admin + super-admin)
+│   └── suivi-public/               site public Next.js 15, fr/en/zh
 └── packages/
     └── shared/                     contrats, énums, schémas Zod, calculs monétaires, i18n
 ```
+
+### Application (livrable 5) — construite en 8 étapes
+
+| Étape | Contenu | Commit |
+|-------|---------|--------|
+| 1 | Monorepo npm workspaces + `@okapi/shared` (domaine pur testé) | `Etape 1/8` |
+| 2 | API NestJS + schéma Prisma (35 modèles) + seed + infra Docker | `Etape 2/8` |
+| 3 | Auth Argon2id + JWT + TOTP + RBAC + périmètre + journal d'audit | `Etape 3/8` |
+| 4 | Module colis + services (séquences, FX, pricing, stockage SigV4, notifications) | `Etape 4/8` |
+| 5 | Paiements + facturation (reçus / factures / avoirs PDF, recalcul solde) | `Etape 5/8` |
+| 6 | Taux de change (admin + sync exchangerate.host) + tarifs admin + configuration | `Etape 6/8` |
+| 7 | Suivi public Next.js fr/en/zh + endpoint public de suivi | `Etape 7/8` |
+| 8 | Back-office React/Vite (connexion, tableau de bord, enregistrement colis, fiche, encaissement, tarifs, taux, utilisateurs, identité visuelle) | `Etape 8/8` |
+
+**Vérifié hors ligne** : `npm run typecheck` + `npm run lint` verts sur les 4 workspaces,
+19 tests unitaires verts, les 3 applications se *build*ent. **Non exécuté ici** (PostgreSQL /
+Docker indisponibles dans l'environnement) : migrations, seed, serveur, tests d'intégration —
+lancer `npm run infra:up` puis `npm run db:migrate && npm run db:constraints && npm run db:seed`.
 
 ---
 

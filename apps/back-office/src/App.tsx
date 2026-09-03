@@ -1,0 +1,49 @@
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { useAuth } from './lib/auth';
+import { Shell } from './components/Shell';
+import { Login } from './pages/Login';
+import { Dashboard } from './pages/Dashboard';
+import { ParcelsList } from './pages/ParcelsList';
+import { ParcelNew } from './pages/ParcelNew';
+import { ParcelDetail } from './pages/ParcelDetail';
+import { Tariffs } from './pages/Tariffs';
+import { ExchangeRates } from './pages/ExchangeRates';
+import { Users } from './pages/Users';
+import { Branding } from './pages/Branding';
+import { Reports } from './pages/Reports';
+
+function Guard({ perm, children }: { perm?: string; children: React.ReactNode }) {
+  const { can } = useAuth();
+  if (perm && !can(perm)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+export function App() {
+  const { me, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="login-wrap">
+        <p className="muted">Chargement…</p>
+      </div>
+    );
+  }
+  if (!me) return <Login />;
+
+  return (
+    <Shell>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/parcels" element={<Guard perm="parcel:read"><ParcelsList /></Guard>} />
+        <Route path="/parcels/new" element={<Guard perm="parcel:create"><ParcelNew /></Guard>} />
+        <Route path="/parcels/:id" element={<Guard perm="parcel:read"><ParcelDetail /></Guard>} />
+        <Route path="/reports" element={<Guard perm="report:read"><Reports /></Guard>} />
+        <Route path="/tariffs" element={<Guard perm="tariff:read"><Tariffs /></Guard>} />
+        <Route path="/exchange-rates" element={<Guard perm="fx:read"><ExchangeRates /></Guard>} />
+        <Route path="/users" element={<Guard perm="user:manage"><Users /></Guard>} />
+        <Route path="/branding" element={<Guard perm="config:write"><Branding /></Guard>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Shell>
+  );
+}
