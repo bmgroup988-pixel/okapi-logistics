@@ -45,5 +45,23 @@ src/
   health/              GET /api/v1/health
 ```
 
-Les modules métier (auth/RBAC, colis, paiements, facturation, FX, notifications,
-suivi public, reporting) sont ajoutés aux étapes 3 à 6.
+## Authentification (étape 3)
+
+| Méthode | Route | Accès |
+|---------|-------|-------|
+| POST | `/api/v1/auth/login` | public — `{ email, password, otp? }` → `{ accessToken, refreshToken, expiresIn }` ; renvoie `MFA_REQUIRED` si TOTP actif |
+| POST | `/api/v1/auth/token` | public — `{ refreshToken }` → rotation à usage unique |
+| POST | `/api/v1/auth/logout` | public — révoque la session |
+| GET  | `/api/v1/me` | authentifié — rôles, permissions, périmètre |
+| POST | `/api/v1/auth/mfa/enroll` | authentifié — secret TOTP + URI otpauth |
+| POST | `/api/v1/auth/mfa/verify` | authentifié — `{ otp }` active le MFA |
+| GET/POST/PATCH/DELETE | `/api/v1/admin/users…` | permission `user:manage` |
+
+- Mots de passe : **Argon2id**. Verrouillage progressif après 5 échecs (15 min).
+- Jetons : access JWT HS256 (15 min) + refresh opaque rotatif en base, révocable.
+- MFA : TOTP RFC 6238 (implémentation interne, sans dépendance) ; secret chiffré AES-256-GCM (repli dev — KMS en prod).
+- Autorisation : `JwtAuthGuard` + `PermissionsGuard` globaux ; `@Public()`, `@RequirePermissions()`, `@CurrentUser()`.
+- Journal d'audit (`AuditService`) : LOGIN / LOGIN_FAILED / CONFIG_CHANGE / UPDATE… (PII expurgées).
+
+Les modules métier (colis, paiements, facturation, FX, notifications, suivi public,
+reporting) sont ajoutés aux étapes 4 à 7.

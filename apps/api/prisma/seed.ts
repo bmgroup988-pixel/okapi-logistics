@@ -265,11 +265,11 @@ async function seedSettings() {
     ['pricing.override_max_pct', '0.15'],
   ];
   for (const [key, value] of entries) {
-    await prisma.setting.upsert({
-      where: { scope_scopeId_key: { scope: 'GLOBAL', scopeId: null, key } },
-      update: { value },
-      create: { scope: 'GLOBAL', scopeId: null, key, value },
+    const existing = await prisma.setting.findFirst({
+      where: { scope: 'GLOBAL', scopeId: null, key },
     });
+    if (existing) await prisma.setting.update({ where: { id: existing.id }, data: { value } });
+    else await prisma.setting.create({ data: { scope: 'GLOBAL', scopeId: null, key, value } });
   }
 }
 
@@ -342,11 +342,19 @@ async function seedRetentionPolicies() {
     ['notification', 13, 'DELETE'],
   ];
   for (const [category, months, action] of rows) {
-    await prisma.retentionPolicy.upsert({
-      where: { category_countryId: { category, countryId: null } },
-      update: { retentionMonths: months, action },
-      create: { category, retentionMonths: months, action },
+    const existing = await prisma.retentionPolicy.findFirst({
+      where: { category, countryId: null },
     });
+    if (existing) {
+      await prisma.retentionPolicy.update({
+        where: { id: existing.id },
+        data: { retentionMonths: months, action },
+      });
+    } else {
+      await prisma.retentionPolicy.create({
+        data: { category, retentionMonths: months, action },
+      });
+    }
   }
 }
 
@@ -379,30 +387,22 @@ async function seedUsers() {
   const agentRole = await prisma.role.findUniqueOrThrow({ where: { code: 'AGENT_FRET' } });
   const cotonou = await prisma.agency.findUniqueOrThrow({ where: { code: 'COO-01' } });
 
-  await prisma.userRole.upsert({
-    where: {
-      userId_roleId_scopeCountryId_scopeAgencyId: {
-        userId: superAdmin.id,
-        roleId: superRole.id,
-        scopeCountryId: null,
-        scopeAgencyId: null,
-      },
-    },
-    update: {},
-    create: { userId: superAdmin.id, roleId: superRole.id },
+  await ensureUserRole(superAdmin.id, superRole.id, null, null);
+  await ensureUserRole(agent.id, agentRole.id, null, cotonou.id);
+}
+
+async function ensureUserRole(
+  userId: string,
+  roleId: string,
+  scopeCountryId: string | null,
+  scopeAgencyId: string | null,
+) {
+  const existing = await prisma.userRole.findFirst({
+    where: { userId, roleId, scopeCountryId, scopeAgencyId },
   });
-  await prisma.userRole.upsert({
-    where: {
-      userId_roleId_scopeCountryId_scopeAgencyId: {
-        userId: agent.id,
-        roleId: agentRole.id,
-        scopeCountryId: null,
-        scopeAgencyId: cotonou.id,
-      },
-    },
-    update: {},
-    create: { userId: agent.id, roleId: agentRole.id, scopeAgencyId: cotonou.id },
-  });
+  if (!existing) {
+    await prisma.userRole.create({ data: { userId, roleId, scopeCountryId, scopeAgencyId } });
+  }
 }
 
 async function main() {

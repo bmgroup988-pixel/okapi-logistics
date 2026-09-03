@@ -2,12 +2,6 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 
-declare module 'express-serve-static-core' {
-  interface Request {
-    requestId?: string;
-  }
-}
-
 /** Corrèle logs, réponses et journal d'audit — ENF-OBS-01. */
 @Injectable()
 export class RequestIdMiddleware implements NestMiddleware {
