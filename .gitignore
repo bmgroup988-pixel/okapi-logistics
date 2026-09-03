@@ -1,0 +1,35 @@
+# Dépendances
+node_modules/
+.pnp.*
+.yarn/*
+
+# Build / sortie
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Environnement & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Divers
+tmp/
+.cache/
