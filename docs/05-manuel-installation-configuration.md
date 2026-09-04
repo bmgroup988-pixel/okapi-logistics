@@ -109,15 +109,22 @@ actuelle et **Mailhog** ne sert qu'aux tests d'e-mail (non câblés).
 
 #### 3.1.1 PostgreSQL natif
 
-```bash
-# 1. Créer le rôle et la base (avec le superutilisateur postgres)
-psql -U postgres -c "CREATE ROLE okapi LOGIN PASSWORD 'okapi';"
-psql -U postgres -c "CREATE DATABASE okapi OWNER okapi;"
-psql -U postgres -c "ALTER ROLE okapi CREATEDB;"   # requis par `prisma migrate dev` (base fantôme)
+> **Windows : `psql` n'est pas sur le PATH par défaut.** L'installeur EDB ne l'y ajoute
+> pas systématiquement. Repérez son chemin (ex.
+> `C:\Program Files\PostgreSQL\18\bin\psql.exe` — le numéro de version varie) via :
+> `Get-ChildItem "C:\Program Files\PostgreSQL" -Filter psql.exe -Recurse` en PowerShell.
+> Utilisez ce chemin complet dans la commande ci-dessous, ou ajoutez le dossier `bin` au
+> PATH pour la session (`$env:Path += ';C:\Program Files\PostgreSQL\18\bin'`).
 
-# 2. Pré-installer les extensions utilisées par 00_constraints.sql
-psql -U postgres -d okapi -c "CREATE EXTENSION IF NOT EXISTS pgcrypto; CREATE EXTENSION IF NOT EXISTS citext; CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE EXTENSION IF NOT EXISTS btree_gist;"
+Le script [`infra/postgres-native-setup.sql`](../infra/postgres-native-setup.sql) crée le
+rôle, la base et les extensions en **une seule fois** (idempotent — peut être rejoué) :
+
+```powershell
+& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -h localhost -p 5432 -f infra\postgres-native-setup.sql
 ```
+
+Une seule invite de mot de passe (celui du superutilisateur `postgres`). Le message final
+`OK — role "okapi", base "okapi" et extensions prets.` confirme le succès.
 
 Renseigner ensuite `DATABASE_URL` dans `apps/api/.env` (et `.env` racine) :
 
