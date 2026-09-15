@@ -112,7 +112,11 @@ Aérien, maritime. Le mode conditionne la grille tarifaire et les délais indica
 | Prendre / remplacer la photo colis | ✅ (avant expédition) | ❌ | ✅ | ❌ |
 | Saisir un paiement | ✅ (son agence) | ➖ lecture | ✅ | ❌ |
 | Annuler / rembourser un paiement | ❌ (demande) | ✅ | ✅ | ❌ |
-| Changer le statut d'un colis | ✅ (son agence) | ✅ | ✅ | ❌ |
+| Changer le statut d'un colis (étapes intermédiaires) | ✅ (son agence) | ✅ | ✅ | ❌ |
+| Confirmer l'arrivée à destination | ✅ (agence de destination) | ✅ | ✅ | ❌ |
+| Confirmer la livraison / l'encaissement final | ✅ (agence de destination, si `payment:create`) | ✅ | ✅ | ❌ |
+| Gérer villes / partenaires de livraison / tarifs partenaires | ❌ | ❌ | ✅ | ❌ |
+| Générer / valider un règlement partenaire | ❌ | ✅ | ✅ | ❌ |
 | Consulter le suivi d'un colis | ✅ | ✅ | ✅ | ✅ (via n° de suivi) |
 | Voir le détail financier d'un colis | ✅ (son agence) | ✅ (tous) | ✅ | ❌ |
 | Rapports consolidés multi-pays | ❌ | ✅ | ✅ | ❌ |
@@ -230,6 +234,20 @@ Chaque exigence porte un identifiant `EF-<module>-<n>` pour la traçabilité ave
 | EF-NOT-04 | Journalisation de chaque envoi : destinataire, canal, modèle, statut (`FILE`, `ENVOYE`, `LIVRE`, `ECHEC`), fournisseur, référence externe, erreur éventuelle. |
 | EF-NOT-05 | Ré-essai automatique en cas d'échec transitoire ; bascule vers un canal de repli configurable. |
 | EF-NOT-06 | Respect des consentements et des désinscriptions ; mentions d'émetteur conformes par pays. |
+
+### 4.8 Module Réseau et partenaires de livraison
+
+Ajouté par l'addendum [`09-addendum-extension-reseau-permissions.md`](09-addendum-extension-reseau-permissions.md) —
+couvre les 26 provinces de la RDC au-delà des seules villes en agence propre.
+
+| ID | Exigence |
+|----|----------|
+| EF-RES-01 | Chaque ville porte un statut `HUB` (agence propre), `PARTNER` (livraison finale via un ou plusieurs partenaires tiers) ou `PLANNED` (pas encore de flux), gérable sans redéploiement depuis `/admin/cities`. |
+| EF-RES-02 | Une ville `PARTNER` peut avoir plusieurs partenaires de livraison actifs, chacun avec sa zone de couverture et son tarif propre ; un partenaire `isPreferred` est proposé par défaut, modifiable par l'agent selon la zone exacte du destinataire. |
+| EF-RES-03 | Le tarif facturé au client vers une ville `PARTNER` = tarif du trajet principal (grille ville→ville existante) + tarif de la dernière étape du partenaire retenu, affiché au client dès la création du colis. |
+| EF-RES-04 | La confirmation d'arrivée (`parcel:arrival:confirm`) et la confirmation de livraison/encaissement (`parcel:deliver:confirm`) sont deux permissions distinctes de la transition générique ; un agent sans `payment:create` peut signaler une arrivée mais pas finaliser une livraison encaissée. |
+| EF-RES-05 | Pour une ville `PARTNER`, l'agent du hub le plus proche consigne la remise au partenaire (`HANDED_TO_PARTNER`, avec référence du partenaire) puis, une fois la preuve de livraison/paiement reçue du partenaire, confirme la livraison pour son compte (option retenue pour la v1 — voir `00-registre-decisions.md`, D16). |
+| EF-RES-06 | Le DAF/super-admin peut générer, par partenaire et par période, un règlement (`DRAFT`→`VALIDATED`→`PAID`) agrégeant les commissions dues sur les colis livrés, sans pointage manuel colis par colis. |
 
 ---
 

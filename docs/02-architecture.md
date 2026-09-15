@@ -133,7 +133,9 @@ Modules NestJS (un dossier par module, découplés par des interfaces) :
 | `config` | Référentiel et configuration autonome : pays, villes, agences, devises, corridors, paramètres, textes multilingues, modèles de notification, identité visuelle. | Cache Redis avec invalidation ; versionnement + prévisualisation ; secrets exclus (KMS). |
 | `pricing` | Grilles tarifaires, calcul du montant dû, fourchette de dérogation. | Fonction pure `quote(corridor, mode, poids, options)` ; historisation des grilles. |
 | `fx` | Devises, taux de change, historisation, sync API, conversion. | `convert(montant, from, to, at)` ; devise pivot = devise de référence ; blocage si taux absent. |
-| `parcels` | Cycle de vie du colis, parties, photos, évènements de suivi, numéro de suivi. | Machine à états ; génération atomique du numéro ; règles d'immuabilité photo. |
+| `parcels` | Cycle de vie du colis, parties, photos, évènements de suivi, numéro de suivi. | Machine à états (dont `HANDED_TO_PARTNER` — addendum 08) ; génération atomique du numéro ; règles d'immuabilité photo ; permission dynamique par statut cible (`parcel:arrival:confirm`/`parcel:deliver:confirm`/`parcel:transition`). |
+| `delivery-partners` | Réseau — statut des villes (HUB/PARTNER/PLANNED), partenaires de livraison tiers et leurs tarifs de dernière étape. Addendum 08, §1. | Admin `city:write` ; sélection auto du partenaire préféré, override agent à la remise. |
+| `partner-settlements` | Réconciliation périodique des commissions dues aux partenaires. Addendum 08, §5. | `settlement:read`/`settlement:write` ; génération par période, workflow DRAFT→VALIDATED→PAID. |
 | `payments` | Paiements, statuts, remboursements, recalcul solde/statut. | Transactions ; idempotence ; hooks vers `billing` et `notifications`. |
 | `billing` | Reçus, factures, avoirs, numérotation séquentielle, PDF. | Séquences par pays/agence ; pièces immuables ; export comptable. |
 | `notifications` | Modèles, rendu localisé, envoi multi-canal, journal, ré-essai, relances. | Abstraction `NotificationProvider` ; file BullMQ ; respect consentements. |
@@ -215,7 +217,10 @@ POST   /api/v1/parcels                    # crée (Idempotency-Key) -> n° de su
 GET    /api/v1/parcels                    # liste filtrée (périmètre appliqué)
 GET    /api/v1/parcels/{id}
 PATCH  /api/v1/parcels/{id}               # champs éditables avant EN_TRANSIT
-POST   /api/v1/parcels/{id}/transition    # { to: "EN_TRANSIT", location, note }
+POST   /api/v1/parcels/{id}/transition    # { to: "EN_TRANSIT"|"ARRIVE"|"HANDED_TO_PARTNER"|"LIVRE"|"RETOURNE", location, note }
+                                           # permission dynamique selon `to` — addendum 08, §4 :
+                                           # ARRIVE -> parcel:arrival:confirm · LIVRE -> parcel:deliver:confirm
+                                           # HANDED_TO_PARTNER (+ deliveryPartnerId) / autres -> parcel:transition
 POST   /api/v1/parcels/{id}/cancel        # { reason }
 GET    /api/v1/parcels/{id}/events
 
@@ -236,9 +241,21 @@ GET    /api/v1/currencies
 POST   /api/v1/admin/currencies
 GET    /api/v1/exchange-rates?from=USD&to=CDF&at=2026-07-01
 POST   /api/v1/admin/exchange-rates          # taux manuel (historisé)
-GET    /api/v1/admin/tariffs
+GET    /api/v1/admin/tariffs                 # RouteTariff — paire (origin_city, destination_city) + mode, sens explicite
 POST   /api/v1/admin/tariffs
 POST   /api/v1/pricing/quote                 # { origin, destination, mode, weight } -> prix
+
+# Réseau — villes, partenaires de livraison, règlements (addendum 08 ; city:write sauf mention)
+GET/POST /api/v1/admin/cities                # statut HUB / PARTNER / PLANNED
+PATCH    /api/v1/admin/cities/{id}
+GET/POST /api/v1/admin/delivery-partners?cityId=
+PATCH    /api/v1/admin/delivery-partners/{id}
+GET/POST /api/v1/admin/delivery-partners/{id}/tariffs
+GET      /api/v1/reference/delivery-partners?cityId=   # lecture agent (choix à la création d'un colis)
+GET      /api/v1/admin/partner-settlements?deliveryPartnerId=&periodStart=&periodEnd=   # settlement:read
+POST     /api/v1/admin/partner-settlements/generate                                     # settlement:write
+GET      /api/v1/admin/partner-settlements/{id}                                         # settlement:read
+PATCH    /api/v1/admin/partner-settlements/{id}    # { status: VALIDATED|PAID }          # settlement:write
 
 # Configuration autonome (super-admin)
 GET/PUT /api/v1/admin/settings               # identité visuelle, contacts, réseaux sociaux

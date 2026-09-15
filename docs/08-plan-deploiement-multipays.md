@@ -55,7 +55,15 @@ Trois éléments seulement peuvent demander un travail spécifique :
       défaut, préfixe téléphonique, **politique de livraison impayée**, taux de TVA,
       région de résidence des données).
 - [ ] **Villes** : créer les villes desservies avec leur **code IATA** (3 lettres),
-      fuseau horaire, indicateurs origine/destination.
+      fuseau horaire, indicateurs origine/destination, et leur **statut réseau**
+      (`HUB` / `PARTNER` / `PLANNED` — addendum 08, voir
+      [`09-addendum-extension-reseau-permissions.md`](09-addendum-extension-reseau-permissions.md)
+      et décision D18). Un pays classique s'ouvre avec des villes `HUB` desservies en
+      propre ; le cas RDC (dernier kilomètre domestique via partenaires locaux) est
+      l'exemple `PARTNER` de référence.
+- [ ] **Partenaires de livraison** (si des villes sont en statut `PARTNER`) : saisir
+      raison sociale, zone de couverture, contact et tarif/kg depuis
+      `/admin/delivery-partners` (voir O-7 dans `00-registre-decisions.md`).
 - [ ] **Corridors** : créer les corridors depuis / vers le nouveau pays.
 - [ ] **Tarifs** : saisir le **prix par kg par destination et par mode** (grilles réelles).
 - [ ] **Agences** : créer les agences (code, ville, devise de facturation, coordonnées).

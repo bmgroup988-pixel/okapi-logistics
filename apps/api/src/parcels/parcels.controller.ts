@@ -84,8 +84,10 @@ export class ParcelsController {
     return this.parcels.update(id, body, user, req.requestId);
   }
 
+  // Permission vérifiée dynamiquement dans le service selon `body.to` —
+  // parcel:arrival:confirm (ARRIVE), parcel:deliver:confirm (LIVRE),
+  // parcel:transition pour les autres étapes — addendum 08, §4.1/§4.2/§4.4.
   @Post(':id/transition')
-  @RequirePermissions('parcel:transition')
   transition(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(parcelTransitionSchema)) body: ParcelTransitionInput,

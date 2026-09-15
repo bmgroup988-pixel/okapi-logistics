@@ -30,6 +30,8 @@
     "@okapi/shared": "*",
     "@prisma/client": "^6.2.1",
     "argon2": "^0.41.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
     "helmet": "^8.0.0",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",

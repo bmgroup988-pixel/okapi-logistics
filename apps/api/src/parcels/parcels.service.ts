@@ -10,20 +10,23 @@ import {
   canTransition,
   composeTrackingNumber,
   currencyDecimals,
+  dAdd,
   isOverrideWithinRange,
   isUnpaid,
   parcelListQuerySchema,
+  quote as computeQuote,
   trackingPeriodKey,
   type ParcelCreateInput,
   type ParcelDetailDto,
   type ParcelSummaryDto,
   type ParcelTransitionInput,
   type ParcelUpdateInput,
+  type Permission,
 } from '@okapi/shared';
 import type { z } from 'zod';
 import { Logger } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
-import type { CurrentUser } from '../auth/current-user';
+import { hasPermission, type CurrentUser } from '../auth/current-user';
 import { canActOnAgency, defaultAgencyId, parcelScopeWhere } from '../auth/scope';
 import { BillingService } from '../billing/billing.service';
 import { paginate } from '../common/api-response';
@@ -110,6 +113,53 @@ export class ParcelsService {
       throw new BadRequestException({ error: { code: API_ERROR_CODES.VALIDATION, message: 'Ville de destination invalide' } });
     }
 
+    // Résolution agence de destination (ville HUB) / partenaire de livraison
+    // (ville PARTNER) — addendum 08, §1.4 et §3.1.
+    let destinationAgencyId: string | null = null;
+    let deliveryPartnerId: string | null = input.deliveryPartnerId ?? null;
+    if (destination.status === 'HUB') {
+      const destAgency = await this.prisma.agency.findFirst({
+        where: { cityId: destination.id, isActive: true },
+      });
+      destinationAgencyId = destAgency?.id ?? null;
+    } else if (destination.status === 'PARTNER') {
+      if (deliveryPartnerId) {
+        const chosen = await this.prisma.deliveryPartner.findFirst({
+          where: { id: deliveryPartnerId, cityId: destination.id, isActive: true },
+        });
+        if (!chosen) {
+          throw new BadRequestException({
+            error: {
+              code: API_ERROR_CODES.VALIDATION,
+              message: 'Partenaire de livraison invalide pour cette ville de destination',
+            },
+          });
+        }
+      } else {
+        const preferred = await this.prisma.deliveryPartner.findFirst({
+          where: { cityId: destination.id, isActive: true, isPreferred: true },
+        });
+        if (preferred) {
+          deliveryPartnerId = preferred.id;
+        } else {
+          const active = await this.prisma.deliveryPartner.findMany({
+            where: { cityId: destination.id, isActive: true },
+            select: { id: true },
+          });
+          if (active.length > 1) {
+            throw new BadRequestException({
+              error: {
+                code: API_ERROR_CODES.VALIDATION,
+                message:
+                  'Plusieurs partenaires desservent cette ville sans partenaire préféré — préciser deliveryPartnerId',
+              },
+            });
+          }
+          deliveryPartnerId = active[0]?.id ?? null;
+        }
+      }
+    }
+
     const billingCurrency = input.billingCurrency ?? agency.billingCurrency;
     const currencyRow = await this.prisma.currency.findUnique({ where: { code: billingCurrency } });
     if (!currencyRow || !currencyRow.isActive) {
@@ -147,9 +197,48 @@ export class ParcelsService {
       });
     }
 
-    // 2) conversion vers la devise de facturation puis vers la devise de référence
+    // 2) conversion vers la devise de facturation
     const toBilling = await this.fx.convert(quote.amount, quote.currency, billingCurrency, now);
-    const toRef = await this.fx.toReference(toBilling.amount, billingCurrency, now);
+
+    // 2bis) dernière étape hub -> destinataire si ville PARTNER — addendum 08, §1.5.
+    // Tarif RouteTariff (trajet principal) + PartnerTariff (dernière étape),
+    // chacun converti dans la devise de facturation avant sommation.
+    let partnerLegSnapshot: Record<string, unknown> | null = null;
+    let partnerLegBillingAmount = '0';
+    if (deliveryPartnerId) {
+      const partnerTariff = await this.prisma.partnerTariff.findFirst({
+        where: {
+          deliveryPartnerId,
+          isActive: true,
+          effectiveFrom: { lte: now },
+          OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }],
+        },
+        orderBy: { effectiveFrom: 'desc' },
+      });
+      if (partnerTariff) {
+        const legDecimals = currencyDecimals(partnerTariff.currencyCode);
+        const legQuote = computeQuote({
+          pricePerKg: partnerTariff.pricePerKg.toString(),
+          weightKg: input.weightKg,
+          decimals: legDecimals,
+        });
+        const legToBilling = await this.fx.convert(legQuote.amount, partnerTariff.currencyCode, billingCurrency, now);
+        partnerLegBillingAmount = legToBilling.amount;
+        partnerLegSnapshot = {
+          deliveryPartnerId,
+          partnerTariffId: partnerTariff.id,
+          currency: partnerTariff.currencyCode,
+          pricePerKg: partnerTariff.pricePerKg.toString(),
+          amount: legQuote.amount,
+          amountBillingCurrency: legToBilling.amount,
+        };
+      }
+      // Pas de tarif actif pour le partenaire choisi : la dernière étape reste
+      // à 0 pour l'instant — l'agent/DAF doit configurer un PartnerTariff.
+    }
+
+    const totalBillingAmount = dAdd(toBilling.amount, partnerLegBillingAmount);
+    const toRef = await this.fx.toReference(totalBillingAmount, billingCurrency, now);
 
     // 3) numéro de suivi (séquentiel par destination, mensuel — D2)
     const seq = await this.sequences.next('tracking', destination.code, trackingPeriodKey(now));
@@ -165,21 +254,27 @@ export class ParcelsService {
           originCityId: origin.id,
           destinationCityId: destination.id,
           destinationCityCode: destination.code,
+          destinationAgencyId,
+          deliveryPartnerId,
           transportMode: input.transportMode,
           weightKg: input.weightKg,
           contentNature: input.contentNature,
           declaredValue,
           declaredValueCurrency,
           billingCurrency,
-          amountDue: toBilling.amount,
+          amountDue: totalBillingAmount,
           amountPaid: '0',
-          balance: toBilling.amount,
+          balance: totalBillingAmount,
           referenceCurrency: this.fx.referenceCurrency,
           amountDueReference: toRef.amount,
           fxRateDue: toRef.rate,
           exchangeRateIdDue: toRef.exchangeRateId,
           pricingOverridePct: input.pricingOverridePct ?? '0',
-          pricingSnapshot: quote.snapshot as Prisma.InputJsonValue,
+          pricingSnapshot: {
+            ...quote.snapshot,
+            partnerLeg: partnerLegSnapshot,
+            totalAmountBillingCurrency: totalBillingAmount,
+          } as Prisma.InputJsonValue,
           consentGiven: input.consent.given,
           consentTextVersion: input.consent.textVersion,
           consentAt: now,
@@ -352,6 +447,19 @@ export class ParcelsService {
     return this.toDetailDto(id);
   }
 
+  /**
+   * Permission requise selon le statut cible — addendum 08, §4.1/§4.2/§4.4.
+   * `parcel:transition` reste le filet par défaut pour les étapes
+   * intermédiaires (EN_TRANSIT, RETOURNE, HANDED_TO_PARTNER) ; l'arrivée et
+   * la livraison exigent leur permission dédiée, ce qui permet à un futur
+   * rôle restreint (ex. AGENT_PARTENAIRE — addendum §4.3, option B) de ne
+   * détenir que ces deux-là.
+   */
+  private static readonly TRANSITION_PERMISSIONS: Partial<Record<ParcelTransitionInput['to'], Permission>> = {
+    ARRIVE: 'parcel:arrival:confirm',
+    LIVRE: 'parcel:deliver:confirm',
+  };
+
   /* ----------------------------------------------------------- transition */
   async transition(
     id: string,
@@ -360,6 +468,29 @@ export class ParcelsService {
     requestId?: string | null,
   ): Promise<ParcelDetailDto> {
     const parcel = await this.findScoped(id, user);
+
+    const requiredPermission = ParcelsService.TRANSITION_PERMISSIONS[input.to] ?? 'parcel:transition';
+    if (!hasPermission(user, requiredPermission)) {
+      throw new ForbiddenException({
+        error: { code: API_ERROR_CODES.FORBIDDEN, message: `Permission requise : ${requiredPermission}` },
+      });
+    }
+
+    // Périmètre agence de destination — addendum 08, §4.1 : un agent ne
+    // confirme l'arrivée/la livraison que pour l'agence de destination de
+    // son périmètre (ville HUB). Sans destinationAgencyId (ville PARTNER,
+    // ou HUB sans agence renseignée), le périmètre large de `findScoped`
+    // (agence/pays d'enregistrement) s'applique.
+    if (
+      (input.to === 'ARRIVE' || input.to === 'LIVRE' || input.to === 'HANDED_TO_PARTNER') &&
+      parcel.destinationAgencyId &&
+      !canActOnAgency(user, parcel.destinationAgencyId)
+    ) {
+      throw new ForbiddenException({
+        error: { code: API_ERROR_CODES.FORBIDDEN, message: 'Hors périmètre de l’agence de destination' },
+      });
+    }
+
     if (!canTransition(parcel.status, input.to)) {
       throw new BadRequestException({
         error: {
@@ -367,6 +498,22 @@ export class ParcelsService {
           message: `Transition ${parcel.status} → ${input.to} non autorisée`,
         },
       });
+    }
+
+    let resolvedDeliveryPartnerId: string | null | undefined;
+    if (input.to === 'HANDED_TO_PARTNER') {
+      const partner = await this.prisma.deliveryPartner.findFirst({
+        where: { id: input.deliveryPartnerId!, cityId: parcel.destinationCityId, isActive: true },
+      });
+      if (!partner) {
+        throw new BadRequestException({
+          error: {
+            code: API_ERROR_CODES.VALIDATION,
+            message: 'Partenaire de livraison invalide pour la ville de destination de ce colis',
+          },
+        });
+      }
+      resolvedDeliveryPartnerId = partner.id;
     }
 
     if (input.to === 'LIVRE' && parcel.paymentStatus !== 'PAYE') {
@@ -395,6 +542,7 @@ export class ParcelsService {
         data: {
           status: input.to,
           deliveredAt: input.to === 'LIVRE' ? new Date() : undefined,
+          deliveryPartnerId: resolvedDeliveryPartnerId ?? undefined,
           updatedById: user.id,
         },
       });

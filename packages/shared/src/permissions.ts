@@ -7,6 +7,10 @@ export const PERMISSIONS = [
   'parcel:read',
   'parcel:update',
   'parcel:transition',
+  /** Confirme l'arrivée physique au hub/agence de destination — addendum 08, §4.1. */
+  'parcel:arrival:confirm',
+  /** Confirme le retrait client + encaissement — addendum 08, §4.2. */
+  'parcel:deliver:confirm',
   'parcel:cancel',
   'parcel:photo:write',
   'payment:create',
@@ -21,11 +25,15 @@ export const PERMISSIONS = [
   'fx:write',
   'config:read',
   'config:write',
+  /** Villes + partenaires de livraison + tarifs partenaires — addendum 08, §1.6. */
   'city:write',
   'currency:write',
   'user:manage',
   'audit:read',
   'gdpr:manage',
+  /** Réconciliation des commissions partenaires — addendum 08, §5.5. */
+  'settlement:read',
+  'settlement:write',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -37,6 +45,8 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
     'parcel:read',
     'parcel:update',
     'parcel:transition',
+    'parcel:arrival:confirm',
+    'parcel:deliver:confirm',
     'parcel:cancel',
     'parcel:photo:write',
     'payment:create',
@@ -49,6 +59,8 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
   ADMIN_DAF: [
     'parcel:read',
     'parcel:transition',
+    'parcel:arrival:confirm',
+    'parcel:deliver:confirm',
     'payment:confirm',
     'payment:refund',
     'document:read',
@@ -60,6 +72,8 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
     'fx:write',
     'config:read',
     'audit:read',
+    'settlement:read',
+    'settlement:write',
   ],
   SUPER_ADMIN: [...PERMISSIONS],
 };

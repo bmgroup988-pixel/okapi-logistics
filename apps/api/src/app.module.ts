@@ -12,11 +12,13 @@ import { CommonModule } from './common/common.module';
 import { RequestIdMiddleware } from './common/request-id.middleware';
 import { buildConfig } from './config/configuration';
 import { validateEnv, type Env } from './config/env.schema';
+import { DeliveryPartnersModule } from './delivery-partners/delivery-partners.module';
 import { FxModule } from './fx/fx.module';
 import { HealthModule } from './health/health.module';
 import { IamModule } from './iam/iam.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ParcelsModule } from './parcels/parcels.module';
+import { PartnerSettlementsModule } from './partner-settlements/partner-settlements.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PricingModule } from './pricing/pricing.module';
 import { PublicTrackingModule } from './public-tracking/public-tracking.module';
@@ -54,6 +56,8 @@ import { TariffsModule } from './tariffs/tariffs.module';
     IamModule,
     SettingsModule,
     TariffsModule,
+    DeliveryPartnersModule,
+    PartnerSettlementsModule,
     ParcelsModule,
     PaymentsModule,
     PublicTrackingModule,

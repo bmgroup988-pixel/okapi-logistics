@@ -14,8 +14,15 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;  -- contraintes d'exclusion sur péri
 
 -- ------------------------------------------------------------------ Enumérations
 CREATE TYPE transport_mode        AS ENUM ('AIR', 'SEA');
-CREATE TYPE parcel_status         AS ENUM ('ENREGISTRE','EN_TRANSIT','ARRIVE','LIVRE','ANNULE','RETOURNE');
+-- HANDED_TO_PARTNER ajouté par l'addendum 08 (§3.2) — remise à un partenaire
+-- de livraison tiers pour une ville de statut PARTNER.
+CREATE TYPE parcel_status         AS ENUM ('ENREGISTRE','EN_TRANSIT','ARRIVE','HANDED_TO_PARTNER','LIVRE','ANNULE','RETOURNE');
 CREATE TYPE payment_status        AS ENUM ('IMPAYE','PARTIEL','PAYE');
+-- Addendum 08, §1.2 : couverture réseau d'une ville.
+CREATE TYPE city_status           AS ENUM ('HUB','PARTNER','PLANNED');
+-- Addendum 08, §5.3/§5.4 : partenaires de livraison et réconciliation.
+CREATE TYPE settlement_mode       AS ENUM ('PER_KG','PERCENT_COLLECTED');
+CREATE TYPE settlement_status     AS ENUM ('DRAFT','VALIDATED','PAID');
 CREATE TYPE parcel_contact_role   AS ENUM ('SENDER','RECIPIENT');
 CREATE TYPE payment_method        AS ENUM ('MOBILE_MONEY','BANK_TRANSFER','CARD','CASH');
 CREATE TYPE payment_state         AS ENUM ('EN_ATTENTE','CONFIRME','ECHOUE','REMBOURSE');
@@ -81,6 +88,8 @@ CREATE TABLE cities (
   code           char(3) NOT NULL,                 -- code inséré dans le n° de suivi
   name_key       text    NOT NULL,
   timezone       text    NOT NULL,
+  -- Addendum 08, §1.2 : HUB (agence propre) / PARTNER (livreur tiers) / PLANNED.
+  status         city_status NOT NULL DEFAULT 'PLANNED',
   is_origin      boolean NOT NULL DEFAULT true,
   is_destination boolean NOT NULL DEFAULT true,
   is_active      boolean NOT NULL DEFAULT true,
@@ -90,6 +99,7 @@ CREATE TABLE cities (
   CONSTRAINT uq_city_code UNIQUE (code)             -- unicité globale (cf. doc 03, Q5)
 );
 CREATE INDEX ix_cities_country ON cities(country_id);
+CREATE INDEX ix_cities_status  ON cities(status);
 CREATE TRIGGER trg_cities_updated BEFORE UPDATE ON cities
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
@@ -158,6 +168,70 @@ CREATE TABLE tariffs (
 );
 CREATE INDEX ix_tariffs_corridor ON tariffs(corridor_id);
 CREATE TRIGGER trg_tariffs_updated BEFORE UPDATE ON tariffs
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Addendum 08, §1.4 : partenaire de livraison tiers pour une ville PARTNER.
+-- Plusieurs partenaires actifs peuvent desservir la même ville (zones
+-- différentes) ; aucune contrainte d'unicité sur city_id.
+CREATE TABLE delivery_partners (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  city_id          uuid NOT NULL REFERENCES cities(id),
+  name             text NOT NULL,
+  coverage_zone    text,
+  contact_name     text,
+  contact_phone    text,
+  contact_email    citext,
+  commission_pct   numeric(6,4),
+  settlement_mode  settlement_mode NOT NULL DEFAULT 'PER_KG',
+  reliability_note text,
+  is_preferred     boolean NOT NULL DEFAULT false,
+  is_active        boolean NOT NULL DEFAULT true,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_delivery_partners_city_active ON delivery_partners(city_id, is_active);
+CREATE TRIGGER trg_delivery_partners_updated BEFORE UPDATE ON delivery_partners
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Addendum 08, §1.5 : tarif de la dernière étape (hub -> destinataire) d'un
+-- partenaire donné. Distinct de `tariffs` (trajet principal jusqu'au hub).
+CREATE TABLE partner_tariffs (
+  id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  delivery_partner_id  uuid NOT NULL REFERENCES delivery_partners(id) ON DELETE CASCADE,
+  price_per_kg         numeric(18,4) NOT NULL CHECK (price_per_kg >= 0),
+  currency_code        char(3) NOT NULL REFERENCES currencies(code),
+  min_weight_kg        numeric(10,2),
+  is_active            boolean NOT NULL DEFAULT true,
+  effective_from       date NOT NULL DEFAULT CURRENT_DATE,
+  effective_to         date,
+  created_at           timestamptz NOT NULL DEFAULT now(),
+  updated_at           timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_partner_tariffs_partner ON partner_tariffs(delivery_partner_id, is_active, effective_from);
+CREATE TRIGGER trg_partner_tariffs_updated BEFORE UPDATE ON partner_tariffs
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Addendum 08, §5 : réconciliation périodique des commissions dues à un
+-- partenaire (générée depuis les colis LIVRE avec delivery_partner_id renseigné).
+CREATE TABLE partner_settlements (
+  id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  delivery_partner_id     uuid NOT NULL REFERENCES delivery_partners(id),
+  period_start            date NOT NULL,
+  period_end              date NOT NULL,
+  parcel_count            integer NOT NULL CHECK (parcel_count >= 0),
+  total_collected_amount  numeric(18,4) NOT NULL,
+  commission_amount       numeric(18,4) NOT NULL,
+  currency_code           char(3) NOT NULL REFERENCES currencies(code),
+  status                  settlement_status NOT NULL DEFAULT 'DRAFT',
+  validated_by_user_id    uuid,
+  paid_at                 timestamptz,
+  payment_reference       text,
+  created_at              timestamptz NOT NULL DEFAULT now(),
+  updated_at              timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT ck_settlement_period CHECK (period_end >= period_start)
+);
+CREATE INDEX ix_partner_settlements_partner_period ON partner_settlements(delivery_partner_id, period_start, period_end);
+CREATE TRIGGER trg_partner_settlements_updated BEFORE UPDATE ON partner_settlements
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TABLE exchange_rates (
@@ -349,6 +423,11 @@ CREATE TABLE parcels (
   origin_city_id         uuid NOT NULL REFERENCES cities(id),
   destination_city_id    uuid NOT NULL REFERENCES cities(id),
   destination_city_code  char(3) NOT NULL,
+  -- Addendum 08, §3.1 : agence de destination (si ville HUB), agence de
+  -- transbordement, partenaire de livraison retenu (si ville PARTNER).
+  destination_agency_id  uuid REFERENCES agencies(id),
+  transit_agency_id      uuid REFERENCES agencies(id),
+  delivery_partner_id    uuid REFERENCES delivery_partners(id),
   transport_mode         transport_mode NOT NULL,
   weight_kg              numeric(10,2) NOT NULL CHECK (weight_kg > 0),
   content_nature         text NOT NULL,
@@ -384,6 +463,8 @@ CREATE INDEX ix_parcels_dashboard       ON parcels (country_id, status, payment_
 CREATE INDEX ix_parcels_tracking_trgm   ON parcels USING gin (tracking_number gin_trgm_ops);
 CREATE INDEX ix_parcels_status_unpaid   ON parcels (status, payment_status)
   WHERE payment_status IN ('IMPAYE','PARTIEL');
+CREATE INDEX ix_parcels_destination_agency ON parcels (destination_agency_id);
+CREATE INDEX ix_parcels_delivery_partner   ON parcels (delivery_partner_id);
 CREATE TRIGGER trg_parcels_updated BEFORE UPDATE ON parcels
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 

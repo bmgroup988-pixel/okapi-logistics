@@ -75,36 +75,77 @@ async function seedCountries() {
   }
 }
 
+/**
+ * Réseau international (statut HUB par défaut — dessertes directes/aériennes,
+ * hors modèle partenaire) + les 26 chefs-lieux de province de la RDC de
+ * l'addendum 08, §1.3 (statut HUB pour les 3 déjà en agence propre, PARTNER
+ * pour les 23 autres — à faire évoluer depuis /admin/cities au fil de
+ * l'ouverture de partenaires). Idempotent comme le reste du seed.
+ */
 async function seedCities() {
-  const rows = [
-    { code: 'COO', nameKey: 'city.cotonou', iso2: 'BJ', tz: 'Africa/Porto-Novo' },
-    { code: 'FIH', nameKey: 'city.kinshasa', iso2: 'CD', tz: 'Africa/Kinshasa' },
-    { code: 'FBM', nameKey: 'city.lubumbashi', iso2: 'CD', tz: 'Africa/Lubumbashi' },
-    { code: 'BZV', nameKey: 'city.brazzaville', iso2: 'CG', tz: 'Africa/Brazzaville' },
-    { code: 'PNR', nameKey: 'city.pointe-noire', iso2: 'CG', tz: 'Africa/Brazzaville' },
-    { code: 'JNB', nameKey: 'city.johannesburg', iso2: 'ZA', tz: 'Africa/Johannesburg' },
-    { code: 'KGL', nameKey: 'city.kigali', iso2: 'RW', tz: 'Africa/Kigali' },
-    { code: 'BJM', nameKey: 'city.bujumbura', iso2: 'BI', tz: 'Africa/Bujumbura' },
-    { code: 'DAR', nameKey: 'city.dar-es-salaam', iso2: 'TZ', tz: 'Africa/Dar_es_Salaam' },
-    { code: 'PAR', nameKey: 'city.paris', iso2: 'FR', tz: 'Europe/Paris' },
-    { code: 'SHA', nameKey: 'city.shanghai', iso2: 'CN', tz: 'Asia/Shanghai' },
-    { code: 'CAN', nameKey: 'city.guangzhou', iso2: 'CN', tz: 'Asia/Shanghai' },
-    { code: 'LOS', nameKey: 'city.lagos', iso2: 'NG', tz: 'Africa/Lagos' },
+  type Row = { code: string; nameKey: string; iso2: string; tz: string; status: 'HUB' | 'PARTNER' | 'PLANNED' };
+  const rows: Row[] = [
+    // -- Réseau international / actuel --
+    { code: 'COO', nameKey: 'city.cotonou', iso2: 'BJ', tz: 'Africa/Porto-Novo', status: 'HUB' },
+    { code: 'FIH', nameKey: 'city.kinshasa', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'HUB' },
+    { code: 'FBM', nameKey: 'city.lubumbashi', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'HUB' },
+    { code: 'BZV', nameKey: 'city.brazzaville', iso2: 'CG', tz: 'Africa/Brazzaville', status: 'HUB' },
+    { code: 'PNR', nameKey: 'city.pointe-noire', iso2: 'CG', tz: 'Africa/Brazzaville', status: 'HUB' },
+    { code: 'JNB', nameKey: 'city.johannesburg', iso2: 'ZA', tz: 'Africa/Johannesburg', status: 'HUB' },
+    { code: 'KGL', nameKey: 'city.kigali', iso2: 'RW', tz: 'Africa/Kigali', status: 'HUB' },
+    { code: 'BJM', nameKey: 'city.bujumbura', iso2: 'BI', tz: 'Africa/Bujumbura', status: 'HUB' },
+    { code: 'DAR', nameKey: 'city.dar-es-salaam', iso2: 'TZ', tz: 'Africa/Dar_es_Salaam', status: 'HUB' },
+    { code: 'PAR', nameKey: 'city.paris', iso2: 'FR', tz: 'Europe/Paris', status: 'HUB' },
+    { code: 'SHA', nameKey: 'city.shanghai', iso2: 'CN', tz: 'Asia/Shanghai', status: 'HUB' },
+    { code: 'CAN', nameKey: 'city.guangzhou', iso2: 'CN', tz: 'Asia/Shanghai', status: 'HUB' },
+    { code: 'LOS', nameKey: 'city.lagos', iso2: 'NG', tz: 'Africa/Lagos', status: 'HUB' },
+    // -- 26 chefs-lieux de province RDC — addendum 08, §1.3 --
+    { code: 'BZU', nameKey: 'city.buta', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Bas-Uele
+    { code: 'MDK', nameKey: 'city.mbandaka', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Équateur
+    // FBM (Haut-Katanga / Lubumbashi) déjà listé ci-dessus, en HUB.
+    { code: 'KMN', nameKey: 'city.kamina', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Haut-Lomami
+    { code: 'IRP', nameKey: 'city.isiro', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Haut-Uele
+    { code: 'BUX', nameKey: 'city.bunia', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Ituri
+    { code: 'TSH', nameKey: 'city.tshikapa', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Kasaï
+    { code: 'KGA', nameKey: 'city.kananga', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Kasaï-Central
+    { code: 'MJM', nameKey: 'city.mbuji-mayi', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Kasaï-Oriental
+    // FIH (Kinshasa) déjà listé ci-dessus, en HUB.
+    { code: 'MAT', nameKey: 'city.matadi', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Kongo-Central
+    { code: 'KEN', nameKey: 'city.kenge', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Kwango
+    { code: 'FDU', nameKey: 'city.bandundu', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Kwilu
+    { code: 'KBN', nameKey: 'city.kabinda', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Lomami
+    { code: 'KWZ', nameKey: 'city.kolwezi', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'HUB' }, // Lualaba
+    { code: 'INO', nameKey: 'city.inongo', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Mai-Ndombe
+    { code: 'KND', nameKey: 'city.kindu', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Maniema
+    { code: 'LIQ', nameKey: 'city.lisala', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Mongala
+    { code: 'GOM', nameKey: 'city.goma', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Nord-Kivu
+    { code: 'BDT', nameKey: 'city.gbadolite', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Nord-Ubangi
+    { code: 'LUS', nameKey: 'city.lusambo', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Sankuru
+    { code: 'BKY', nameKey: 'city.bukavu', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Sud-Kivu
+    { code: 'GMA', nameKey: 'city.gemena', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Sud-Ubangi
+    { code: 'FMI', nameKey: 'city.kalemie', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Tanganyika
+    { code: 'FKI', nameKey: 'city.kisangani', iso2: 'CD', tz: 'Africa/Lubumbashi', status: 'PARTNER' }, // Tshopo
+    { code: 'BNB', nameKey: 'city.boende', iso2: 'CD', tz: 'Africa/Kinshasa', status: 'PARTNER' }, // Tshuapa
   ];
   for (const c of rows) {
     const country = await prisma.country.findUniqueOrThrow({ where: { iso2: c.iso2 } });
     await prisma.city.upsert({
       where: { code: c.code },
-      update: { countryId: country.id, timezone: c.tz, nameKey: c.nameKey },
-      create: { code: c.code, nameKey: c.nameKey, timezone: c.tz, countryId: country.id },
+      update: { countryId: country.id, timezone: c.tz, nameKey: c.nameKey, status: c.status },
+      create: { code: c.code, nameKey: c.nameKey, timezone: c.tz, countryId: country.id, status: c.status },
     });
   }
 }
 
 async function seedAgencies() {
+  // Agences propres existantes — cf. flyer des adresses d'agences (Kinshasa,
+  // Lubumbashi, Kolwezi, Cotonou, Johannesburg).
   const rows = [
     { code: 'COO-01', name: 'Agence Cotonou', city: 'COO', cur: 'XOF' },
     { code: 'FIH-01', name: 'Agence Kinshasa', city: 'FIH', cur: 'CDF' },
+    { code: 'FBM-01', name: 'Agence Lubumbashi', city: 'FBM', cur: 'CDF' },
+    { code: 'KWZ-01', name: 'Agence Kolwezi', city: 'KWZ', cur: 'CDF' },
+    { code: 'JNB-01', name: 'Agence Johannesburg', city: 'JNB', cur: 'ZAR' },
   ];
   for (const a of rows) {
     const city = await prisma.city.findUniqueOrThrow({ where: { code: a.city } });
@@ -121,6 +162,59 @@ async function seedAgencies() {
         email: 'contact.gokapi@gmail.com',
       },
     });
+  }
+}
+
+/**
+ * Partenaires de livraison de démonstration pour deux villes PARTNER —
+ * addendum 08, §1.4/§1.5. Valeurs à ajuster une fois les partenaires réels
+ * identifiés (même logique que `seedTariffs`, valeurs indicatives).
+ */
+async function seedDeliveryPartners() {
+  const rows = [
+    {
+      city: 'GOM',
+      name: 'Kivu Express Courrier',
+      coverageZone: 'Goma centre-ville',
+      contactPhone: '+243 990 000 001',
+      isPreferred: true,
+      pricePerKg: '0.60',
+      currency: 'USD',
+    },
+    {
+      city: 'BKY',
+      name: 'Bukavu Livraison Rapide',
+      coverageZone: 'Bukavu centre-ville',
+      contactPhone: '+243 990 000 002',
+      isPreferred: true,
+      pricePerKg: '0.60',
+      currency: 'USD',
+    },
+  ];
+  for (const r of rows) {
+    const city = await prisma.city.findUniqueOrThrow({ where: { code: r.city } });
+    const existing = await prisma.deliveryPartner.findFirst({ where: { cityId: city.id, name: r.name } });
+    const partner = existing
+      ? await prisma.deliveryPartner.update({
+          where: { id: existing.id },
+          data: { coverageZone: r.coverageZone, contactPhone: r.contactPhone, isPreferred: r.isPreferred },
+        })
+      : await prisma.deliveryPartner.create({
+          data: {
+            cityId: city.id,
+            name: r.name,
+            coverageZone: r.coverageZone,
+            contactPhone: r.contactPhone,
+            isPreferred: r.isPreferred,
+            settlementMode: 'PER_KG',
+          },
+        });
+    const activeTariff = await prisma.partnerTariff.findFirst({
+      where: { deliveryPartnerId: partner.id, isActive: true, effectiveTo: null },
+    });
+    const data = { deliveryPartnerId: partner.id, pricePerKg: D(r.pricePerKg), currencyCode: r.currency };
+    if (activeTariff) await prisma.partnerTariff.update({ where: { id: activeTariff.id }, data });
+    else await prisma.partnerTariff.create({ data });
   }
 }
 
@@ -411,6 +505,7 @@ async function main() {
   await seedCountries();
   await seedCities();
   await seedAgencies();
+  await seedDeliveryPartners();
   await seedCorridors();
   await seedTariffs();
   await seedExchangeRates();

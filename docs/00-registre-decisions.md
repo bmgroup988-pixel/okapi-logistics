@@ -23,6 +23,20 @@ Ce registre fait foi ; les autres documents sont alignés sur ces réponses.
 | **D14** | Langues du back-office | **fr + en + zh dès la v1** (comme la page publique). | i18next back-office : `fr`, `en`, `zh`. Tous les libellés traduits en v1. |
 | **D15** | Rétention des dossiers colis | **5 ans** par défaut (à ajuster par pays si besoin). | `retention_policies.parcel_dossier = 60 mois`, action `ANONYMIZE`. Pièces comptables : conservées selon droit local (≥ 10 ans). |
 
+## Décisions — addendum 08 (extension réseau, tarification, permissions)
+
+Intégré le 2026-09-10. Voir [`09-addendum-extension-reseau-permissions.md`](09-addendum-extension-reseau-permissions.md)
+pour le document source ; ces décisions arbitrent les points qu'il laissait ouverts.
+
+| # | Sujet | Décision (2026-09-10) | Impact |
+|---|-------|-----------------------|--------|
+| **D16** | Rôle `AGENT_PARTENAIRE` (addendum §4.3, option B) | **Différé.** L'option A (l'agent du hub le plus proche gère la remise et la livraison pour le compte du partenaire) est retenue pour la v1. La scission `parcel:arrival:confirm`/`parcel:deliver:confirm` (déjà nécessaire pour l'option A) rend l'ajout ultérieur du rôle sans migration de permissions — seulement une nouvelle ligne `roles`. | Aucun compte partenaire en v1. Réévaluer si le volume par partenaire le justifie (même logique que O-1, SMS différé). |
+| **D17** | Table `RouteTariff` de l'addendum (§2.2) | **Pas de nouvelle table.** Le modèle `tariffs` existant (D6) couvre déjà une paire `(origin_city_id, destination_city_id)` + mode, sens explicite, versionnée par date — c'est exactement le besoin décrit. Seule la dernière étape partenaire (`partner_tariffs`) est nouvelle. | `docs/03` §4, note sous `tariffs`. Aucun impact sur le modèle de données au-delà de `delivery_partners`/`partner_tariffs`/`partner_settlements`. |
+| **D18** | Statut réseau des villes hors RDC | Les villes du réseau international actuel (Cotonou, Brazzaville, Pointe-Noire, Johannesburg, Kigali, Bujumbura, Dar es Salaam, Paris, Shanghai, Guangzhou, Lagos) sont classées `HUB` par défaut — le modèle partenaire cible le dernier kilomètre domestique RDC, pas le fret international classique. | `cities.status = HUB` pour ces villes au seed. Modifiable depuis `/admin/cities` si un mode partenaire y est introduit plus tard. |
+| **D19** | Résolution de tarif — ordre | L'implémentation existante (ville→ville exact → destination seule toutes origines → corridor pays → erreur) est conservée telle quelle ; elle couvre et affine l'ordre proposé par l'addendum (§2.3 : exact → corridor → erreur). | `pricing.service.ts`, inchangé par l'addendum. |
+| **D20** | Devise du règlement partenaire (`partner_settlements`) | **v1 : devise unique par partenaire**, celle de son `partner_tariffs` actif (ou du dernier colis inclus à défaut). Pas de conversion multi-devises dans le calcul de réconciliation. | Limite documentée dans `docs/03` §4 (`partner_settlements`) et dans le service `PartnerSettlementsService`. À lever si un partenaire facture dans plusieurs devises. |
+| **D21** | Détail des colis inclus dans un règlement (addendum §5.2, `GET .../{id}`) | Pas de table de liaison règlement↔colis en v1 : le détail est **recalculé à la demande** avec les mêmes critères que la génération (`deliveryPartnerId` + `LIVRE` + `deliveredAt` dans la période). Une régularisation après génération repasse donc par une nouvelle génération plutôt qu'une correction manuelle du brouillon. | `PartnerSettlementsService.get()`. À réévaluer si des colis sont corrigés/réattribués après la génération d'un règlement `VALIDATED`. |
+
 ## Questions résiduelles ouvertes
 
 | # | Sujet | Attendu |
@@ -33,3 +47,4 @@ Ce registre fait foi ; les autres documents sont alignés sur ces réponses.
 | **O-4** | **Corridors** actifs exacts et délais indicatifs par corridor | Compléter la liste du doc 03 §14. |
 | **O-5** | Régimes de **TVA/taxe** par pays (quand ≠ 0) | Fournir au fil des déploiements (D13). |
 | **O-6** | Comptes fournisseurs (Meta WhatsApp Business, AWS SES, exchangerate.host, OVHcloud) et identités d'émetteur / expéditeurs vérifiés | À provisionner par le client. |
+| **O-7** | Partenaires de livraison réels pour les 23 villes RDC en statut `PARTNER` | Seuls Goma et Bukavu ont un partenaire de démonstration en seed (`seedDeliveryPartners`, addendum 08). Fournir raison sociale, zone de couverture, contact et tarif/kg par ville pour les saisir depuis `/admin/delivery-partners` avant mise en production. |

@@ -24,9 +24,30 @@ enum ParcelStatus {
   ENREGISTRE
   EN_TRANSIT
   ARRIVE
+  HANDED_TO_PARTNER
   LIVRE
   ANNULE
   RETOURNE
+}
+
+/// Couverture réseau d'une ville — addendum 08, §1.2.
+enum CityStatus {
+  HUB
+  PARTNER
+  PLANNED
+}
+
+/// Mode de rémunération d'un partenaire de livraison — addendum 08, §5.3.
+enum SettlementMode {
+  PER_KG
+  PERCENT_COLLECTED
+}
+
+/// Cycle de vie d'un règlement partenaire — addendum 08, §5.4.
+enum SettlementStatus {
+  DRAFT
+  VALIDATED
+  PAID
 }
 
 enum PaymentStatus {
@@ -127,11 +148,13 @@ model Currency {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  countriesDefault    Country[]       @relation("CountryDefaultCurrency")
-  agenciesBilling     Agency[]        @relation("AgencyBillingCurrency")
+  countriesDefault    Country[]           @relation("CountryDefaultCurrency")
+  agenciesBilling     Agency[]            @relation("AgencyBillingCurrency")
   tariffs             Tariff[]
-  ratesBase           ExchangeRate[]  @relation("RateBase")
-  ratesQuote          ExchangeRate[]  @relation("RateQuote")
+  ratesBase           ExchangeRate[]      @relation("RateBase")
+  ratesQuote          ExchangeRate[]      @relation("RateQuote")
+  partnerTariffs      PartnerTariff[]
+  partnerSettlements  PartnerSettlement[]
 
   @@map("currencies")
 }
@@ -161,27 +184,32 @@ model Country {
 }
 
 model City {
-  id            String    @id @default(uuid()) @db.Uuid
-  countryId     String    @map("country_id") @db.Uuid
-  code          String    @unique @db.Char(3)
-  nameKey       String    @map("name_key")
+  id            String     @id @default(uuid()) @db.Uuid
+  countryId     String     @map("country_id") @db.Uuid
+  code          String     @unique @db.Char(3)
+  nameKey       String     @map("name_key")
   timezone      String
-  isOrigin      Boolean   @default(true) @map("is_origin")
-  isDestination Boolean   @default(true) @map("is_destination")
-  isActive      Boolean   @default(true) @map("is_active")
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  /// Couverture réseau — HUB (agence propre), PARTNER (partenaire tiers),
+  /// PLANNED (pas encore de flux) — addendum 08, §1.2.
+  status        CityStatus @default(PLANNED)
+  isOrigin      Boolean    @default(true) @map("is_origin")
+  isDestination Boolean    @default(true) @map("is_destination")
+  isActive      Boolean    @default(true) @map("is_active")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime?  @map("deleted_at") @db.Timestamptz(6)
 
-  country          Country       @relation(fields: [countryId], references: [id])
+  country          Country           @relation(fields: [countryId], references: [id])
   agencies         Agency[]
-  parcelsAsOrigin  Parcel[]      @relation("ParcelOriginCity")
-  parcelsAsDest    Parcel[]      @relation("ParcelDestinationCity")
-  tariffsAsOrigin  Tariff[]      @relation("TariffOriginCity")
-  tariffsAsDest    Tariff[]      @relation("TariffDestinationCity")
-  eventsAtLocation ParcelEvent[] @relation("EventLocationCity")
+  parcelsAsOrigin  Parcel[]          @relation("ParcelOriginCity")
+  parcelsAsDest    Parcel[]          @relation("ParcelDestinationCity")
+  tariffsAsOrigin  Tariff[]          @relation("TariffOriginCity")
+  tariffsAsDest    Tariff[]          @relation("TariffDestinationCity")
+  eventsAtLocation ParcelEvent[]     @relation("EventLocationCity")
+  deliveryPartners DeliveryPartner[]
 
   @@index([countryId])
+  @@index([status])
   @@map("cities")
 }
 
@@ -201,12 +229,14 @@ model Agency {
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  city      City       @relation(fields: [cityId], references: [id])
-  country   Country    @relation(fields: [countryId], references: [id])
-  currency  Currency   @relation("AgencyBillingCurrency", fields: [billingCurrency], references: [code])
-  parcels   Parcel[]
-  payments  Payment[]
-  userRoles UserRole[]
+  city                 City       @relation(fields: [cityId], references: [id])
+  country              Country    @relation(fields: [countryId], references: [id])
+  currency             Currency   @relation("AgencyBillingCurrency", fields: [billingCurrency], references: [code])
+  parcels              Parcel[]
+  parcelsAsDestination Parcel[]   @relation("ParcelDestinationAgency")
+  parcelsAsTransit     Parcel[]   @relation("ParcelTransitAgency")
+  payments             Payment[]
+  userRoles            UserRole[]
 
   @@index([countryId])
   @@map("agencies")
@@ -486,6 +516,12 @@ model Parcel {
   originCityId          String        @map("origin_city_id") @db.Uuid
   destinationCityId     String        @map("destination_city_id") @db.Uuid
   destinationCityCode   String        @map("destination_city_code") @db.Char(3)
+  /// Agence de destination si la ville est un HUB — addendum 08, §3.1.
+  destinationAgencyId   String?       @map("destination_agency_id") @db.Uuid
+  /// Agence intermédiaire en cas de transbordement — addendum 08, §3.1.
+  transitAgencyId       String?       @map("transit_agency_id") @db.Uuid
+  /// Partenaire retenu si la ville est PARTNER — addendum 08, §1.4/§3.1.
+  deliveryPartnerId     String?       @map("delivery_partner_id") @db.Uuid
   transportMode         TransportMode @map("transport_mode")
   weightKg              Decimal       @map("weight_kg") @db.Decimal(10, 2)
   contentNature         String        @map("content_nature")
@@ -516,6 +552,9 @@ model Parcel {
   updatedAt             DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   registrationAgency Agency          @relation(fields: [registrationAgencyId], references: [id])
+  destinationAgency  Agency?         @relation("ParcelDestinationAgency", fields: [destinationAgencyId], references: [id])
+  transitAgency      Agency?         @relation("ParcelTransitAgency", fields: [transitAgencyId], references: [id])
+  deliveryPartner    DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id])
   registrationAgent  User            @relation("ParcelRegistrationAgent", fields: [registrationAgentId], references: [id])
   originCity         City            @relation("ParcelOriginCity", fields: [originCityId], references: [id])
   destinationCity    City            @relation("ParcelDestinationCity", fields: [destinationCityId], references: [id])
@@ -530,6 +569,8 @@ model Parcel {
   @@index([registrationAgencyId, createdAt(sort: Desc)])
   @@index([countryId, status, paymentStatus, createdAt])
   @@index([status, paymentStatus])
+  @@index([destinationAgencyId])
+  @@index([deliveryPartnerId])
   @@map("parcels")
 }
 
@@ -792,4 +833,78 @@ model DataAccessRequest {
   completedAt      DateTime?     @map("completed_at") @db.Timestamptz(6)
 
   @@map("data_access_requests")
+}
+/// Partenaire de livraison tiers pour une ville PARTNER — addendum 08, §1.4.
+/// Plusieurs partenaires actifs peuvent desservir la même ville, chacun avec
+/// sa propre zone de couverture et son propre tarif (PartnerTariff).
+model DeliveryPartner {
+  id              String         @id @default(uuid()) @db.Uuid
+  cityId          String         @map("city_id") @db.Uuid
+  city            City           @relation(fields: [cityId], references: [id])
+  name            String
+  coverageZone    String?        @map("coverage_zone")
+  contactName     String?        @map("contact_name")
+  contactPhone    String?        @map("contact_phone")
+  contactEmail    String?        @map("contact_email")
+  commissionPct   Decimal?       @map("commission_pct") @db.Decimal(6, 4)
+  /// PER_KG ou PERCENT_COLLECTED — détermine le calcul de PartnerSettlement.
+  settlementMode  SettlementMode @default(PER_KG) @map("settlement_mode")
+  reliabilityNote String?        @map("reliability_note")
+  /// Partenaire proposé par défaut à la création d'un colis pour cette ville.
+  isPreferred     Boolean        @default(false) @map("is_preferred")
+  isActive        Boolean        @default(true) @map("is_active")
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  tariffs     PartnerTariff[]
+  settlements PartnerSettlement[]
+  parcels     Parcel[]
+
+  @@index([cityId, isActive])
+  @@map("delivery_partners")
+}
+
+/// Tarif de la dernière étape (hub → destinataire) d'un partenaire —
+/// addendum 08, §1.5. Distinct de `Tariff`/RouteTariff, qui couvre le trajet
+/// principal jusqu'au hub le plus proche.
+model PartnerTariff {
+  id                String          @id @default(uuid()) @db.Uuid
+  deliveryPartnerId String          @map("delivery_partner_id") @db.Uuid
+  deliveryPartner   DeliveryPartner @relation(fields: [deliveryPartnerId], references: [id])
+  pricePerKg        Decimal         @map("price_per_kg") @db.Decimal(18, 4)
+  currencyCode      String          @map("currency_code") @db.Char(3)
+  currency          Currency        @relation(fields: [currencyCode], references: [code])
+  minWeightKg       Decimal?        @map("min_weight_kg") @db.Decimal(10, 2)
+  isActive          Boolean         @default(true) @map("is_active")
+  effectiveFrom     DateTime        @default(now()) @map("effective_from") @db.Date
+  effectiveTo       DateTime?       @map("effective_to") @db.Date
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([deliveryPartnerId, isActive, effectiveFrom])
+  @@map("partner_tariffs")
+}
+
+/// Réconciliation périodique des commissions dues à un partenaire —
+/// addendum 08, §5.
+model PartnerSettlement {
+  id                   String           @id @default(uuid()) @db.Uuid
+  deliveryPartnerId    String           @map("delivery_partner_id") @db.Uuid
+  deliveryPartner      DeliveryPartner  @relation(fields: [deliveryPartnerId], references: [id])
+  periodStart          DateTime         @map("period_start") @db.Date
+  periodEnd            DateTime         @map("period_end") @db.Date
+  parcelCount          Int              @map("parcel_count")
+  totalCollectedAmount Decimal          @map("total_collected_amount") @db.Decimal(18, 4)
+  commissionAmount     Decimal          @map("commission_amount") @db.Decimal(18, 4)
+  currencyCode         String           @map("currency_code") @db.Char(3)
+  currency             Currency         @relation(fields: [currencyCode], references: [code])
+  status               SettlementStatus @default(DRAFT)
+  validatedByUserId    String?          @map("validated_by_user_id") @db.Uuid
+  paidAt               DateTime?        @map("paid_at") @db.Timestamptz(6)
+  paymentReference     String?          @map("payment_reference")
+  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([deliveryPartnerId, periodStart, periodEnd])
+  @@map("partner_settlements")
 }

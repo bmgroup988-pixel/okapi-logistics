@@ -5,6 +5,8 @@ import {
   MOBILE_MONEY_PROVIDERS,
   NOTIFICATION_CHANNELS,
   NOTIFICATION_TRIGGERS,
+  CITY_STATUSES,
+  SETTLEMENT_MODES,
 } from './enums.js';
 
 /** Schémas de validation partagés front / back (Zod). */
@@ -50,6 +52,13 @@ export const parcelCreateSchema = z.object({
   recipient: contactSchema,
   originCityId: uuid,
   destinationCityId: uuid,
+  /**
+   * Partenaire de livraison choisi pour une destination `PARTNER` — addendum
+   * 08, §1.4. Optionnel : à défaut, le partenaire `isPreferred` actif de la
+   * ville est retenu automatiquement ; requis explicitement s'il en existe
+   * plusieurs sans préféré.
+   */
+  deliveryPartnerId: uuid.optional().nullable(),
   transportMode: z.enum(TRANSPORT_MODES),
   weightKg: weightString,
   contentNature: z.string().min(1).max(500),
@@ -75,15 +84,27 @@ export const parcelUpdateSchema = parcelCreateSchema
   .partial();
 export type ParcelUpdateInput = z.infer<typeof parcelUpdateSchema>;
 
-export const parcelTransitionSchema = z.object({
-  to: z.enum(['EN_TRANSIT', 'ARRIVE', 'LIVRE', 'RETOURNE']),
-  locationCityId: uuid.optional().nullable(),
-  locationLabel: z.string().max(160).optional().nullable(),
-  note: z.string().max(1000).optional().nullable(),
-  visibleToClient: z.boolean().default(true),
-  /** justification obligatoire pour livrer avec un solde impayé — RG-08 */
-  unpaidOverrideReason: z.string().max(500).optional().nullable(),
-});
+export const parcelTransitionSchema = z
+  .object({
+    to: z.enum(['EN_TRANSIT', 'ARRIVE', 'HANDED_TO_PARTNER', 'LIVRE', 'RETOURNE']),
+    locationCityId: uuid.optional().nullable(),
+    locationLabel: z.string().max(160).optional().nullable(),
+    note: z.string().max(1000).optional().nullable(),
+    visibleToClient: z.boolean().default(true),
+    /** justification obligatoire pour livrer avec un solde impayé — RG-08 */
+    unpaidOverrideReason: z.string().max(500).optional().nullable(),
+    /**
+     * Partenaire de livraison retenu pour la remise — requis pour
+     * `to: 'HANDED_TO_PARTNER'`, permet à l'agent de corriger le partenaire
+     * choisi à la création si la zone du destinataire l'exige (addendum 08,
+     * §1.4).
+     */
+    deliveryPartnerId: uuid.optional().nullable(),
+  })
+  .refine((d) => d.to !== 'HANDED_TO_PARTNER' || !!d.deliveryPartnerId, {
+    message: 'deliveryPartnerId est requis pour remettre le colis à un partenaire',
+    path: ['deliveryPartnerId'],
+  });
 export type ParcelTransitionInput = z.infer<typeof parcelTransitionSchema>;
 
 export const parcelCancelSchema = z.object({
@@ -195,4 +216,71 @@ export const parcelListQuerySchema = paginationSchema.extend({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),
   q: z.string().max(120).optional(),
+});
+
+/* ------------------------------------------------------------------------ */
+/* Addendum 08 — réseau (26 provinces), partenaires de livraison, règlements */
+/* ------------------------------------------------------------------------ */
+
+export const cityCreateSchema = z.object({
+  code: z.string().regex(/^[A-Z]{3}$/, 'code à 3 lettres majuscules (IATA de préférence)'),
+  nameKey: z.string().min(1).max(120),
+  countryId: uuid,
+  timezone: z.string().min(1).max(64),
+  status: z.enum(CITY_STATUSES).default('PLANNED'),
+  isOrigin: z.boolean().default(true),
+  isDestination: z.boolean().default(true),
+});
+export type CityCreateInput = z.infer<typeof cityCreateSchema>;
+
+export const cityUpdateSchema = z.object({
+  status: z.enum(CITY_STATUSES).optional(),
+  nameKey: z.string().min(1).max(120).optional(),
+  timezone: z.string().min(1).max(64).optional(),
+  isOrigin: z.boolean().optional(),
+  isDestination: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+});
+export type CityUpdateInput = z.infer<typeof cityUpdateSchema>;
+
+export const deliveryPartnerUpsertSchema = z.object({
+  cityId: uuid,
+  name: z.string().min(1).max(200),
+  coverageZone: z.string().max(300).optional().nullable(),
+  contactName: z.string().max(160).optional().nullable(),
+  contactPhone: z.string().max(32).optional().nullable(),
+  contactEmail: z.string().email().max(200).optional().nullable(),
+  commissionPct: decimalString().optional().nullable(),
+  settlementMode: z.enum(SETTLEMENT_MODES).default('PER_KG'),
+  reliabilityNote: z.string().max(500).optional().nullable(),
+  isPreferred: z.boolean().default(false),
+  isActive: z.boolean().default(true),
+});
+export type DeliveryPartnerUpsertInput = z.infer<typeof deliveryPartnerUpsertSchema>;
+
+export const partnerTariffCreateSchema = z.object({
+  pricePerKg: positiveDecimalString,
+  currency: currencyCode,
+  minWeightKg: weightString.optional().nullable(),
+  effectiveFrom: z.string().date().optional(),
+});
+export type PartnerTariffCreateInput = z.infer<typeof partnerTariffCreateSchema>;
+
+export const partnerSettlementGenerateSchema = z.object({
+  deliveryPartnerId: uuid,
+  periodStart: z.string().date(),
+  periodEnd: z.string().date(),
+});
+export type PartnerSettlementGenerateInput = z.infer<typeof partnerSettlementGenerateSchema>;
+
+export const partnerSettlementUpdateSchema = z.object({
+  status: z.enum(['VALIDATED', 'PAID']),
+  paymentReference: z.string().max(200).optional().nullable(),
+});
+export type PartnerSettlementUpdateInput = z.infer<typeof partnerSettlementUpdateSchema>;
+
+export const partnerSettlementListQuerySchema = z.object({
+  deliveryPartnerId: uuid.optional(),
+  periodStart: z.string().date().optional(),
+  periodEnd: z.string().date().optional(),
 });

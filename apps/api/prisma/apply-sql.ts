@@ -6,7 +6,13 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { config as loadEnv } from 'dotenv';
 import { Client } from 'pg';
+
+// Contrairement à `seed.ts` (qui utilise PrismaClient, lequel charge .env
+// automatiquement), ce script parle directement à `pg` et doit charger
+// apps/api/.env lui-même avant de lire process.env.DATABASE_URL.
+loadEnv({ path: join(__dirname, '..', '.env') });
 
 async function main() {
   const url = process.env.DATABASE_URL;

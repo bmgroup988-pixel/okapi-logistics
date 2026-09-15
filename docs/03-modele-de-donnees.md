@@ -94,8 +94,11 @@ admins (devises, moyens de paiement additionnels, canaux) sont en **tables de r�
 | Type | Valeurs | Domaine |
 |------|---------|---------|
 | `transport_mode` | `AIR`, `SEA` | Colis |
-| `parcel_status` | `ENREGISTRE`, `EN_TRANSIT`, `ARRIVE`, `LIVRE`, `ANNULE`, `RETOURNE` | Colis |
+| `parcel_status` | `ENREGISTRE`, `EN_TRANSIT`, `ARRIVE`, `HANDED_TO_PARTNER`, `LIVRE`, `ANNULE`, `RETOURNE` | Colis — `HANDED_TO_PARTNER` ajouté par l'addendum 08 (remise à un partenaire de livraison tiers). |
 | `payment_status` | `IMPAYE`, `PARTIEL`, `PAYE` | Colis (dérivé) |
+| `city_status` | `HUB`, `PARTNER`, `PLANNED` | Réseau — addendum 08 §1.2. Couverture d'une ville : agence propre, partenaire tiers, ou pas encore de flux. |
+| `settlement_mode` | `PER_KG`, `PERCENT_COLLECTED` | Réseau — addendum 08 §5.3. Mode de rémunération d'un partenaire de livraison. |
+| `settlement_status` | `DRAFT`, `VALIDATED`, `PAID` | Réseau — addendum 08 §5.4. Cycle de vie d'un règlement partenaire. |
 | `parcel_contact_role` | `SENDER`, `RECIPIENT` | Colis |
 | `payment_method` | `MOBILE_MONEY`, `BANK_TRANSFER`, `CARD`, `CASH` | Paiement |
 | `mobile_money_provider` | `MPESA`, `ORANGE_MONEY`, `AIRTEL_MONEY` (extensible via table) | Paiement |
@@ -109,7 +112,10 @@ admins (devises, moyens de paiement additionnels, canaux) sont en **tables de r�
 | `erasure_status` | `RECU`, `EN_COURS`, `TERMINE`, `REFUSE` | RGPD |
 | `setting_scope` | `GLOBAL`, `COUNTRY`, `AGENCY` | Config |
 
-**Machine à états `parcel_status`** — transitions autorisées uniquement :
+**Machine à états `parcel_status`** — transitions autorisées uniquement. `ARRIVE →
+HANDED_TO_PARTNER → LIVRE|RETOURNE` couvre la remise à un partenaire de livraison
+tiers pour une ville `PARTNER` (addendum 08, §3.2) ; `ARRIVE → LIVRE` reste
+possible directement pour une ville `HUB` :
 
 ```mermaid
 stateDiagram-v2
@@ -119,7 +125,10 @@ stateDiagram-v2
     EN_TRANSIT --> ARRIVE
     EN_TRANSIT --> RETOURNE
     ARRIVE --> LIVRE
+    ARRIVE --> HANDED_TO_PARTNER
     ARRIVE --> RETOURNE
+    HANDED_TO_PARTNER --> LIVRE
+    HANDED_TO_PARTNER --> RETOURNE
     RETOURNE --> ARRIVE
     LIVRE --> [*]
     ANNULE --> [*]
@@ -272,6 +281,7 @@ erDiagram
 | `code` | `char(3)` | NOT NULL | Code inséré dans le numéro de suivi (`FIH`, `COO`, `BZV`, `JNB`, `KGL`, `BJM`, `DAR`, `CDG`, `PVG`, `LOS`…). Unicité **globale** recommandée : `UNIQUE (code)` (à confirmer si collision possible → `UNIQUE (country_id, code)` + code pays dans le n° de suivi). |
 | `name_key` | `text` | NOT NULL | i18n. |
 | `timezone` | `text` | NOT NULL | IANA (`Africa/Kinshasa`, `Europe/Paris`, `Asia/Shanghai`). |
+| `status` | `city_status` | NOT NULL DEFAULT `PLANNED` | Addendum 08, §1.2 — `HUB` (agence propre), `PARTNER` (livraison via un ou plusieurs `delivery_partners`, dernière étape hors agence Okapi), `PLANNED` (identifiée, aucun flux). Une ville n'implique pas forcément une agence : cf. `delivery_partners` ci-dessous. |
 | `is_origin` | `boolean` | NOT NULL DEFAULT true | Proposée comme ville de départ. |
 | `is_destination` | `boolean` | NOT NULL DEFAULT true | Proposée comme ville de destination. |
 | `is_active` | `boolean` | NOT NULL DEFAULT true | |
@@ -329,6 +339,72 @@ erDiagram
 | `validity` | `daterange` | NOT NULL DEFAULT `[today,)` | Période de validité. |
 | `created_by` | `uuid` | FK `users.id` | |
 | | | EXCLUDE (chevauchement de `validity` pour un même triplet cible+mode) via `btree_gist` | Empêche deux tarifs actifs simultanés. |
+
+> **Note d'intégration (addendum 08, §2)** : le document complémentaire nomme ce
+> besoin « `RouteTariff` ». C'est exactement le rôle déjà tenu par `tariffs` avec
+> `(origin_city_id, destination_city_id)` renseignés — aucune table
+> supplémentaire n'a donc été créée pour ce volet. Pour une destination
+> `PARTNER`, `tariffs` couvre le trajet principal jusqu'au hub le plus proche ;
+> la dernière étape (hub → destinataire) est facturée séparément via
+> `partner_tariffs` ci-dessous et sommée au montant dû (§6, `parcels`).
+
+### `delivery_partners`
+
+Partenaire de livraison tiers assurant la dernière étape pour une ville
+`PARTNER` — addendum 08, §1.4. Une ville n'a pas d'agence Okapi dans ce cas ;
+plusieurs partenaires actifs peuvent desservir la même ville avec des zones
+et des tarifs différents (pas de contrainte d'unicité sur `city_id`).
+
+| Colonne | Type | Contraintes | Notes |
+|---------|------|-------------|-------|
+| `id` | `uuid` | PK | |
+| `city_id` | `uuid` | FK `cities.id`, NOT NULL | Ville desservie (statut `PARTNER`). |
+| `name` | `text` | NOT NULL | Raison sociale du partenaire. |
+| `coverage_zone` | `text` | NULL | Zone desservie précise (ex. « axe Kolwezi-Fungurume »), utile quand plusieurs partenaires se partagent une province. |
+| `contact_name` / `contact_phone` / `contact_email` | `text` | NULL | |
+| `commission_pct` | `numeric(6,4)` | NULL | Utilisé si `settlement_mode = PERCENT_COLLECTED`. |
+| `settlement_mode` | `settlement_mode` | NOT NULL DEFAULT `PER_KG` | Détermine le calcul de `partner_settlements` (§5.3 de l'addendum). |
+| `reliability_note` | `text` | NULL | Délai moyen constaté, fiabilité observée — aide au choix agent. |
+| `is_preferred` | `boolean` | NOT NULL DEFAULT false | Partenaire proposé par défaut à la création d'un colis pour cette ville ; un seul actif par ville (appliqué côté service). |
+| `is_active` | `boolean` | NOT NULL DEFAULT true | |
+
+### `partner_tariffs`
+
+Tarif de la dernière étape (hub → destinataire) **par partenaire** — addendum
+08, §1.5. Deux partenaires d'une même ville peuvent facturer différemment ;
+même logique de versionnement datée que `tariffs` (nouvelle ligne + clôture
+de la précédente, pas d'`EXCLUDE` en base pour ce volet en v1).
+
+| Colonne | Type | Contraintes | Notes |
+|---------|------|-------------|-------|
+| `id` | `uuid` | PK | |
+| `delivery_partner_id` | `uuid` | FK `delivery_partners.id`, NOT NULL | |
+| `price_per_kg` | `numeric(18,4)` | NOT NULL, CHECK ≥ 0 | |
+| `currency_code` | `char(3)` | FK `currencies.code`, NOT NULL | |
+| `min_weight_kg` | `numeric(10,2)` | NULL | Poids minimum facturé (non appliqué au calcul du montant en v1 — voir registre des décisions). |
+| `is_active` | `boolean` | NOT NULL DEFAULT true | |
+| `effective_from` / `effective_to` | `date` | `effective_from` NOT NULL | |
+
+### `partner_settlements`
+
+Réconciliation périodique des commissions dues à un partenaire — addendum
+08, §5. Générée depuis les colis `LIVRE` du partenaire sur la période (pas de
+table de liaison colis↔règlement en v1 : le détail est recalculé à la
+demande avec les mêmes critères que la génération).
+
+| Colonne | Type | Contraintes | Notes |
+|---------|------|-------------|-------|
+| `id` | `uuid` | PK | |
+| `delivery_partner_id` | `uuid` | FK `delivery_partners.id`, NOT NULL | |
+| `period_start` / `period_end` | `date` | NOT NULL | |
+| `parcel_count` | `integer` | NOT NULL | |
+| `total_collected_amount` | `numeric(18,4)` | NOT NULL | Somme des `amount_paid` des colis inclus. |
+| `commission_amount` | `numeric(18,4)` | NOT NULL | `price_per_kg × poids` (PER_KG) ou `commission_pct × total_collected_amount` (PERCENT_COLLECTED). |
+| `currency_code` | `char(3)` | FK `currencies.code`, NOT NULL | |
+| `status` | `settlement_status` | NOT NULL DEFAULT `DRAFT` | `DRAFT` (généré) → `VALIDATED` (DAF) → `PAID` (virement effectué). |
+| `validated_by_user_id` | `uuid` | FK `users.id` NULL | |
+| `paid_at` | `timestamptz` | NULL | |
+| `payment_reference` | `text` | NULL | |
 
 ### `exchange_rates`
 
@@ -515,15 +591,41 @@ Exemples : `parcel:create`, `parcel:update`, `parcel:transition`, `parcel:photo:
 `fx:write`, `config:write`, `city:write`, `currency:write`, `user:manage`, `audit:read`,
 `gdpr:manage`.
 
+> **Addendum 08, §4** — `parcel:transition` couvrait jusque-là *toute*
+> transition de statut. Pour un contrôle fin et un audit clair de la
+> réception/livraison, deux permissions dédiées s'y ajoutent :
+> - `parcel:arrival:confirm` — signale l'arrivée physique au hub/agence de
+>   destination (`ARRIVE`), avant tout retrait client.
+> - `parcel:deliver:confirm` — constate le retrait client et l'encaissement
+>   (`LIVRE`), verrouille le dossier.
+>
+> `parcel:transition` reste utilisé pour les étapes intermédiaires
+> (`EN_TRANSIT`, `RETOURNE`, `HANDED_TO_PARTNER`). Un agent qui n'a pas
+> `payment:create` ne peut donc pas finaliser une livraison encaissée, mais
+> peut signaler une simple arrivée. Deux permissions supplémentaires
+> couvrent la réconciliation des partenaires (§4 ci-dessous) :
+> `settlement:read`, `settlement:write`.
+
 ### `role_permissions`
 
 `(role_id uuid FK, permission_code text FK)`, PK composite. Attribution par défaut :
 
 | Rôle | Permissions (extrait) |
 |------|-----------------------|
-| `AGENT_FRET` | `parcel:*` (hors delete), `payment:create`, `document:read`, `parcel:transition` (agence). |
-| `ADMIN_DAF` | lecture globale, `payment:refund`, `report:*`, `tariff:write`, `fx:write`, `audit:read`, `export:*`. |
+| `AGENT_FRET` | `parcel:*` (hors delete), `payment:create`, `document:read`, `parcel:transition`, `parcel:arrival:confirm`, `parcel:deliver:confirm` (agence). |
+| `ADMIN_DAF` | lecture globale, `payment:refund`, `report:*`, `tariff:write`, `fx:write`, `audit:read`, `export:*`, `parcel:arrival:confirm`, `parcel:deliver:confirm` (correction), `settlement:read`, `settlement:write`. |
 | `SUPER_ADMIN` | tout, dont `user:manage`, `config:write`, `city:write`, `currency:write`, `gdpr:manage`. |
+
+> **Rôle différé (addendum 08, §4.3, option B)** : un rôle `AGENT_PARTENAIRE`
+> à permissions restreintes (`parcel:arrival:confirm` + `parcel:deliver:confirm`
+> uniquement, pas d'accès aux rapports ni à la création de colis), avec un
+> compte par partenaire, est envisagé pour donner un accès direct aux
+> partenaires à fort volume plutôt que de faire remonter l'information à
+> l'agent du hub. Non retenu pour la v1 (voir `00-registre-decisions.md`,
+> décision D16) — la permission `parcel:arrival:confirm`/`parcel:deliver:confirm`
+> étant déjà distincte de `parcel:transition`, l'ajout de ce rôle plus tard ne
+> nécessitera aucune migration de permissions, seulement une nouvelle ligne
+> `roles` + `role_permissions`.
 
 ### `user_roles`
 
@@ -659,6 +761,9 @@ erDiagram
 | `origin_city_id` | `uuid` | FK `cities.id`, NOT NULL | |
 | `destination_city_id` | `uuid` | FK `cities.id`, NOT NULL | |
 | `destination_city_code` | `char(3)` | NOT NULL | Figé (traçabilité du n° de suivi même si la ville est renommée). |
+| `destination_agency_id` | `uuid` | FK `agencies.id` NULL | Addendum 08, §3.1 — agence de destination si `destination_city.status = HUB` (résolue automatiquement à la création). Sert de base au contrôle de périmètre de `parcel:arrival:confirm`/`parcel:deliver:confirm`. |
+| `transit_agency_id` | `uuid` | FK `agencies.id` NULL | Agence intermédiaire en cas de transbordement. |
+| `delivery_partner_id` | `uuid` | FK `delivery_partners.id` NULL | Addendum 08, §1.4/§3.1 — partenaire retenu si `destination_city.status = PARTNER` (préféré auto-sélectionné, ou choisi par l'agent). Modifiable à la remise (`HANDED_TO_PARTNER`) si la zone du destinataire l'exige. |
 | `transport_mode` | `transport_mode` | NOT NULL | |
 | `weight_kg` | `numeric(10,2)` | NOT NULL, CHECK > 0 | |
 | `content_nature` | `text` | NOT NULL | Donnée potentiellement sensible → non exposée au public. |
@@ -675,7 +780,7 @@ erDiagram
 | `fx_rate_due` | `numeric(18,8)` | NOT NULL | Taux `billing→reference` figé à l'enregistrement. |
 | `exchange_rate_id_due` | `uuid` | FK `exchange_rates.id` NULL | |
 | `pricing_override_pct` | `numeric(6,4)` | NOT NULL DEFAULT 0 | Dérogation agent appliquée (EF-ENR-09) ; tracée si ≠ 0. |
-| `pricing_snapshot` | `jsonb` | NOT NULL | Détail du calcul (tarif appliqué, frais fixes, prix/kg, min, ad valorem). Preuve. |
+| `pricing_snapshot` | `jsonb` | NOT NULL | Détail du calcul (tarif appliqué, frais fixes, prix/kg, min, ad valorem). Preuve. Contient une clé `partnerLeg` (tarif du partenaire, montant de la dernière étape) quand `delivery_partner_id` est renseigné — addendum 08, §1.5. |
 | `consent_given` | `boolean` | NOT NULL DEFAULT false | RG-14. |
 | `consent_text_version` | `text` | | Version des mentions acceptées. |
 | `consent_at` | `timestamptz` | | |
@@ -1138,25 +1243,75 @@ priment : elles sont conservées sous forme non identifiante et le refus partiel
 | `CN` Chine | CNY | zh | +86 | strict |
 | `NG` Nigeria | NGN | en | +234 | derogation |
 
-### Villes — **codes IATA officiels** (D5 ; liste exhaustive à compléter, O-2)
+### Villes — **codes IATA officiels** (D5 ; complétée par l'addendum 08 — O-2 résolue pour la RDC)
 
 Code **ville métropolitain** IATA quand il existe, sinon code de l'aéroport principal.
+`status` suit `city_status` (§3) — `HUB` = agence propre, `PARTNER` = livraison
+finale via un ou plusieurs `delivery_partners`, `PLANNED` = pas encore de flux.
 
-| Ville | Pays | Code IATA | Type de code | Fuseau |
-|-------|------|-----------|--------------|--------|
-| Cotonou | BJ | `COO` | aéroport | Africa/Porto-Novo |
-| Kinshasa | CD | `FIH` | aéroport | Africa/Kinshasa |
-| Lubumbashi | CD | `FBM` | aéroport | Africa/Lubumbashi |
-| Brazzaville | CG | `BZV` | aéroport | Africa/Brazzaville |
-| Pointe-Noire | CG | `PNR` | aéroport | Africa/Brazzaville |
-| Johannesburg | ZA | `JNB` | ville | Africa/Johannesburg |
-| Kigali | RW | `KGL` | aéroport | Africa/Kigali |
-| Bujumbura | BI | `BJM` | aéroport | Africa/Bujumbura |
-| Dar es Salaam | TZ | `DAR` | aéroport | Africa/Dar_es_Salaam |
-| Paris | FR | `PAR` | ville | Europe/Paris |
-| Shanghai | CN | `SHA` | ville | Asia/Shanghai |
-| Guangzhou | CN | `CAN` | aéroport | Asia/Shanghai |
-| Lagos | NG | `LOS` | ville | Africa/Lagos |
+**Réseau international / actuel :**
+
+| Ville | Pays | Code IATA | Type de code | Fuseau | Statut |
+|-------|------|-----------|--------------|--------|--------|
+| Cotonou | BJ | `COO` | aéroport | Africa/Porto-Novo | HUB |
+| Kinshasa | CD | `FIH` | aéroport | Africa/Kinshasa | HUB |
+| Lubumbashi | CD | `FBM` | aéroport | Africa/Lubumbashi | HUB |
+| Brazzaville | CG | `BZV` | aéroport | Africa/Brazzaville | HUB |
+| Pointe-Noire | CG | `PNR` | aéroport | Africa/Brazzaville | HUB |
+| Johannesburg | ZA | `JNB` | ville | Africa/Johannesburg | HUB |
+| Kigali | RW | `KGL` | aéroport | Africa/Kigali | HUB |
+| Bujumbura | BI | `BJM` | aéroport | Africa/Bujumbura | HUB |
+| Dar es Salaam | TZ | `DAR` | aéroport | Africa/Dar_es_Salaam | HUB |
+| Paris | FR | `PAR` | ville | Europe/Paris | HUB |
+| Shanghai | CN | `SHA` | ville | Asia/Shanghai | HUB |
+| Guangzhou | CN | `CAN` | aéroport | Asia/Shanghai | HUB |
+| Lagos | NG | `LOS` | ville | Africa/Lagos | HUB |
+
+> Ces villes hors RDC sont classées `HUB` par défaut : le modèle
+> `delivery_partners`/`PARTNER` cible spécifiquement le dernier kilomètre
+> domestique en RDC (addendum 08) et non les dessertes internationales,
+> traitées directement (fret aérien/maritime classique). Rien n'empêche de
+> repasser une de ces villes en `PARTNER` plus tard depuis `/admin/cities`
+> si un mode de livraison via tiers y est introduit.
+
+**26 chefs-lieux de province de la RDC (addendum 08, §1.3)** — 3 déjà en
+agence propre (`HUB`), 23 desservis par des partenaires (`PARTNER`) à
+enregistrer dans `delivery_partners` au fil des ouvertures :
+
+| # | Province | Ville | Code | Statut |
+|---|----------|-------|------|--------|
+| 1 | Bas-Uele | Buta | `BZU` | PARTNER |
+| 2 | Équateur | Mbandaka | `MDK` | PARTNER |
+| 3 | Haut-Katanga | Lubumbashi | `FBM` | HUB *(cf. tableau ci-dessus)* |
+| 4 | Haut-Lomami | Kamina | `KMN` | PARTNER |
+| 5 | Haut-Uele | Isiro | `IRP` | PARTNER |
+| 6 | Ituri | Bunia | `BUX` | PARTNER |
+| 7 | Kasaï | Tshikapa | `TSH` | PARTNER |
+| 8 | Kasaï-Central | Kananga | `KGA` | PARTNER |
+| 9 | Kasaï-Oriental | Mbuji-Mayi | `MJM` | PARTNER |
+| 10 | Kinshasa | Kinshasa | `FIH` | HUB *(cf. tableau ci-dessus)* |
+| 11 | Kongo-Central | Matadi | `MAT` | PARTNER |
+| 12 | Kwango | Kenge | `KEN` | PARTNER |
+| 13 | Kwilu | Bandundu | `FDU` | PARTNER |
+| 14 | Lomami | Kabinda | `KBN` | PARTNER |
+| 15 | Lualaba | Kolwezi | `KWZ` | HUB |
+| 16 | Mai-Ndombe | Inongo | `INO` | PARTNER |
+| 17 | Maniema | Kindu | `KND` | PARTNER |
+| 18 | Mongala | Lisala | `LIQ` | PARTNER |
+| 19 | Nord-Kivu | Goma | `GOM` | PARTNER |
+| 20 | Nord-Ubangi | Gbadolite | `BDT` | PARTNER |
+| 21 | Sankuru | Lusambo | `LUS` | PARTNER |
+| 22 | Sud-Kivu | Bukavu | `BKY` | PARTNER |
+| 23 | Sud-Ubangi | Gemena | `GMA` | PARTNER |
+| 24 | Tanganyika | Kalemie | `FMI` | PARTNER |
+| 25 | Tshopo | Kisangani | `FKI` | PARTNER |
+| 26 | Tshuapa | Boende | `BNB` | PARTNER |
+
+Fuseaux : provinces de l'ouest (Kongo-Central, Kwango, Kwilu, Mai-Ndombe,
+Équateur, Sud-Ubangi, Nord-Ubangi, Mongala, Tshuapa, Kasaï, Kasaï-Central) en
+`Africa/Kinshasa` ; provinces de l'est (le reste) en `Africa/Lubumbashi`.
+Codes à valider/ajuster une fois confrontés aux numéros de suivi déjà émis,
+pour éviter toute collision (cf. registre des décisions, D17).
 
 ### Corridors actifs au lancement
 
