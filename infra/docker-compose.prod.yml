@@ -1,0 +1,122 @@
+# Déploiement de production — instance unique (démarrage simplifié, cf.
+# docs/08 §3 et docs/10-guide-hebergement-ovhcloud.md). Tous les services
+# tournent sur un seul serveur (VPS OVHcloud) derrière Traefik (TLS
+# Let's Encrypt automatique). Migration ultérieure vers PostgreSQL managé /
+# Object Storage OVHcloud : ne change que DATABASE_URL et les S3_* (aucun
+# changement de code).
+#
+# Utilisation :
+#   1. Copier infra/.env.prod.example vers infra/.env.prod et le remplir.
+#   2. docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod up -d
+#   Voir docs/10-guide-hebergement-ovhcloud.md pour la procédure complète.
+
+services:
+  traefik:
+    image: traefik:v3.1
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - okapi-letsencrypt:/letsencrypt
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: okapi
+    volumes:
+      - okapi-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Pas de port publié : jamais exposé hors du réseau Docker interne.
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    volumes:
+      - okapi-minio:/data
+    # À remplacer par OVHcloud Object Storage en changeant S3_ENDPOINT dans
+    # le service `api` — aucune modification de code nécessaire.
+
+  api:
+    image: ${GHCR_IMAGE_PREFIX}-api:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_BASE_URL: https://${API_DOMAIN}
+      PUBLIC_TRACKING_BASE_URL: https://${SUIVI_DOMAIN}
+      CORS_ORIGINS: https://${SUIVI_DOMAIN},https://${BACKOFFICE_DOMAIN}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/okapi?schema=public
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: okapi-photos
+      S3_FORCE_PATH_STYLE: "true"
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      CONTACT_EMAIL: ${CONTACT_EMAIL}
+      # Connecteurs de notification (optionnels — voir docs/10 §7). Absents
+      # = mode "console" (journalisation locale, aucun envoi réel).
+      SES_REGION: ${SES_REGION:-}
+      SES_ACCESS_KEY: ${SES_ACCESS_KEY:-}
+      SES_SECRET_KEY: ${SES_SECRET_KEY:-}
+      SES_FROM_EMAIL: ${SES_FROM_EMAIL:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      SMS_GATEWAY_USERNAME: ${SMS_GATEWAY_USERNAME:-}
+      SMS_GATEWAY_API_KEY: ${SMS_GATEWAY_API_KEY:-}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.okapi-api.rule=Host(`${API_DOMAIN}`)
+      - traefik.http.routers.okapi-api.entrypoints=websecure
+      - traefik.http.routers.okapi-api.tls.certresolver=le
+      - traefik.http.services.okapi-api.loadbalancer.server.port=3000
+
+  back-office:
+    image: ${GHCR_IMAGE_PREFIX}-back-office:latest
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.okapi-bo.rule=Host(`${BACKOFFICE_DOMAIN}`)
+      - traefik.http.routers.okapi-bo.entrypoints=websecure
+      - traefik.http.routers.okapi-bo.tls.certresolver=le
+      - traefik.http.services.okapi-bo.loadbalancer.server.port=80
+
+  suivi-public:
+    image: ${GHCR_IMAGE_PREFIX}-suivi-public:latest
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.okapi-suivi.rule=Host(`${SUIVI_DOMAIN}`)
+      - traefik.http.routers.okapi-suivi.entrypoints=websecure
+      - traefik.http.routers.okapi-suivi.tls.certresolver=le
+      - traefik.http.services.okapi-suivi.loadbalancer.server.port=3000
+
+volumes:
+  okapi-pg:
+  okapi-minio:
+  okapi-letsencrypt:

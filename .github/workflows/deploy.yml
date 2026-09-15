@@ -1,0 +1,82 @@
+name: Deploy
+
+# Déclenchement MANUEL uniquement (workflow_dispatch) tant qu'aucun serveur
+# n'est provisionné — voir docs/10-guide-hebergement-ovhcloud.md. Une fois
+# le serveur prêt et les secrets GitHub configurés (SSH_HOST, SSH_USER,
+# SSH_PRIVATE_KEY), on peut ajouter un déclencheur `push: branches: [main]`
+# pour un déploiement continu automatique.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environnement cible"
+        required: true
+        default: production
+        type: choice
+        options: [production]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Connexion au registre GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push — API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}-api:latest,${{ env.IMAGE_PREFIX }}-api:${{ github.sha }}
+
+      - name: Build & push — Back-office
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/back-office/Dockerfile
+          push: true
+          build-args: |
+            VITE_API_BASE=${{ vars.VITE_API_BASE }}
+          tags: ${{ env.IMAGE_PREFIX }}-back-office:latest,${{ env.IMAGE_PREFIX }}-back-office:${{ github.sha }}
+
+      - name: Build & push — Suivi public
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/suivi-public/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE=${{ vars.NEXT_PUBLIC_API_BASE }}
+          tags: ${{ env.IMAGE_PREFIX }}-suivi-public:latest,${{ env.IMAGE_PREFIX }}-suivi-public:${{ github.sha }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Se connecter au serveur et relancer les conteneurs
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/okapi-logistics
+            docker compose -f infra/docker-compose.prod.yml pull
+            docker compose -f infra/docker-compose.prod.yml up -d
+            docker compose -f infra/docker-compose.prod.yml exec -T api npx prisma migrate deploy
+            docker image prune -f

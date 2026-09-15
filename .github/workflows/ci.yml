@@ -1,0 +1,65 @@
+name: CI
+
+# Validation continue — ne nécessite AUCUN compte cloud ni secret : lint,
+# typecheck, tests, build des 3 apps sur chaque push/PR. À faire réussir en
+# vert avant d'activer le déploiement (deploy.yml).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: okapi
+          POSTGRES_PASSWORD: okapi
+          POSTGRES_DB: okapi
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U okapi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://okapi:okapi@localhost:5432/okapi?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-not-for-production
+      JWT_REFRESH_SECRET: ci-refresh-secret-not-for-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Typecheck (tous les workspaces)
+        run: npm run typecheck
+
+      - name: Lint (tous les workspaces)
+        run: npm run lint
+
+      - name: Migrations Prisma (base de test)
+        run: npm run prisma:migrate --workspace @okapi/api -- --skip-generate
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Tests unitaires
+        run: npm test
+
+      - name: Build (tous les workspaces)
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE: http://localhost:3000/api/v1
+
+      - name: Build des images Docker (validation seule, sans publication)
+        run: |
+          docker build -f apps/api/Dockerfile -t okapi-api:ci .
+          docker build -f apps/back-office/Dockerfile -t okapi-back-office:ci .
+          docker build -f apps/suivi-public/Dockerfile -t okapi-suivi-public:ci .

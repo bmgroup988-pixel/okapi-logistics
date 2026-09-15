@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@okapi/shared'],
+  // Image Docker de production allégée (copie uniquement les fichiers
+  // nécessaires à l'exécution) — voir apps/suivi-public/Dockerfile.
+  output: 'standalone',
   // La page affiche une seule image servie par URL S3 signée : `next/image`
   // tenterait de la proxifier/optimiser et invaliderait la signature. ESLint
   // Next (règle no-img-element) n'est pas configuré ici ; lint via `tsc`.
