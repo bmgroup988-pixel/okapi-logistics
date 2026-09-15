@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { ErrorText, Loading, Modal, Pill } from '../components/ui';
+import { CityLabel, ErrorText, Loading, Modal, Pill } from '../components/ui';
+import { useCityLookup } from '../lib/geo';
 
 interface City {
   id: string;
   code: string;
+  name: string;
   status: 'HUB' | 'PARTNER' | 'PLANNED';
 }
 
@@ -114,7 +116,7 @@ export function DeliveryPartners() {
           <select value={cityFilter} onChange={(e) => setCityFilter(e.target.value)}>
             <option value="">Toutes</option>
             {partnerCities.map((c) => (
-              <option key={c.id} value={c.id}>{c.code}</option>
+              <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
             ))}
           </select>
         </div>
@@ -137,7 +139,7 @@ export function DeliveryPartners() {
             <tbody>
               {(partners.data ?? []).map((p) => (
                 <tr key={p.id}>
-                  <td className="mono">{p.cityCode}</td>
+                  <td><CityLabel code={p.cityCode} /></td>
                   <td>{p.name}</td>
                   <td className="muted">{p.coverageZone ?? '—'}</td>
                   <td className="muted">{p.contactPhone ?? p.contactEmail ?? '—'}</td>
@@ -165,7 +167,7 @@ export function DeliveryPartners() {
             <select value={form.cityId} onChange={(e) => set('cityId', e.target.value)}>
               <option value="">—</option>
               {(cities.data ?? []).map((c) => (
-                <option key={c.id} value={c.id}>{c.code}{c.status !== 'PARTNER' ? ` (${c.status})` : ''}</option>
+                <option key={c.id} value={c.id}>{c.code} — {c.name}{c.status !== 'PARTNER' ? ` (${c.status})` : ''}</option>
               ))}
             </select>
           </div>
@@ -263,6 +265,8 @@ export function DeliveryPartners() {
 
 function PartnerTariffsModal({ partner, onClose }: { partner: Partner; onClose: () => void }) {
   const qc = useQueryClient();
+  const cityLookup = useCityLookup();
+  const cityName = cityLookup[partner.cityCode]?.name;
   const tariffs = useQuery({
     queryKey: ['partner-tariffs', partner.id],
     queryFn: () => api<PartnerTariff[]>(`/admin/delivery-partners/${partner.id}/tariffs`),
@@ -284,7 +288,7 @@ function PartnerTariffsModal({ partner, onClose }: { partner: Partner; onClose: 
   });
 
   return (
-    <Modal title={`Tarifs — ${partner.name} (${partner.cityCode})`} onClose={onClose}>
+    <Modal title={`Tarifs — ${partner.name} (${partner.cityCode}${cityName ? ' — ' + cityName : ''})`} onClose={onClose}>
       {tariffs.isLoading ? (
         <Loading />
       ) : (

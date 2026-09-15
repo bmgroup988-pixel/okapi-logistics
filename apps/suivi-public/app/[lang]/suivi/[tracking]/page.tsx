@@ -131,6 +131,9 @@ export default async function TrackingPage({
         <div>
           <div>
             <strong>{t.destination} :</strong> {data.destinationCityCode}
+            {data.destinationCityName ? (
+              <span style={{ color: 'var(--mute)', fontSize: 12 }}> ({data.destinationCityName})</span>
+            ) : null}
           </div>
           <div style={{ color: 'var(--mute)' }}>
             {t.registeredOn} {new Date(data.registeredAt).toLocaleDateString(lang)}

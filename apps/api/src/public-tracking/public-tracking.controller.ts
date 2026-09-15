@@ -2,6 +2,7 @@ import { Controller, Get, NotFoundException, Param, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   API_ERROR_CODES,
+  humanizeNameKey,
   isValidTrackingNumber,
   type PublicTrackingDto,
 } from '@okapi/shared';
@@ -59,6 +60,7 @@ export class PublicTrackingController {
       status: parcel.status,
       paymentState,
       destinationCityCode: parcel.destinationCity.code,
+      destinationCityName: humanizeNameKey(parcel.destinationCity.nameKey),
       registeredAt: parcel.createdAt.toISOString(),
       photoUrl: primary?.storageKey
         ? this.storage.presignGet(primary.storageKey, 'client').url

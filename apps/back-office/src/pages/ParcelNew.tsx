@@ -4,10 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { api, uuid } from '../lib/api';
 import { useT } from '../lib/i18n';
 import type { City, ParcelDetail } from '../lib/types';
-import { ErrorText } from '../components/ui';
+import { CityLabel, ErrorText } from '../components/ui';
 
 interface CityRef extends City {
+  name: string;
   countryIso2: string;
+  countryName: string;
   isOrigin: boolean;
   isDestination: boolean;
   status: 'HUB' | 'PARTNER' | 'PLANNED';
@@ -245,7 +247,7 @@ export function ParcelNew() {
                 <select value={form.originCityId} onChange={(e) => set('originCityId', e.target.value)}>
                   <option value="">—</option>
                   {origins.map((c) => (
-                    <option key={c.id} value={c.id}>{c.code} ({c.countryIso2})</option>
+                    <option key={c.id} value={c.id}>{c.code} — {c.name} ({c.countryName})</option>
                   ))}
                 </select>
               </div>
@@ -261,7 +263,7 @@ export function ParcelNew() {
                   <option value="">—</option>
                   {dests.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.code} ({c.countryIso2}){c.status === 'PARTNER' ? ' — partenaire' : ''}
+                      {c.code} — {c.name} ({c.countryName}){c.status === 'PARTNER' ? ' — partenaire' : ''}
                     </option>
                   ))}
                 </select>
@@ -327,10 +329,11 @@ export function ParcelNew() {
 
           {isPartnerDestination && (
             <div className="card">
-              <h3>Partenaire de livraison — {destinationCity?.code}</h3>
+              <h3>Partenaire de livraison — <CityLabel code={destinationCity?.code} /></h3>
               <p className="muted" style={{ marginTop: 0 }}>
-                {destinationCity?.code} n’a pas d’agence Okapi propre : la dernière étape est
-                assurée par un partenaire tiers, avec son propre tarif ajouté au montant dû.
+                {destinationCity?.name ?? destinationCity?.code} n’a pas d’agence Okapi propre : la
+                dernière étape est assurée par un partenaire tiers, avec son propre tarif ajouté au
+                montant dû.
               </p>
               {partners.isLoading ? (
                 <p className="muted">Chargement…</p>

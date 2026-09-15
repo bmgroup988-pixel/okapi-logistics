@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   API_ERROR_CODES,
+  countryDisplayName,
+  humanizeNameKey,
   type CityCreateInput,
   type CityUpdateInput,
   type DeliveryPartnerUpsertInput,
@@ -31,8 +33,10 @@ export class DeliveryPartnersService {
       id: c.id,
       code: c.code,
       nameKey: c.nameKey,
+      name: humanizeNameKey(c.nameKey),
       countryId: c.countryId,
       countryIso2: c.country.iso2,
+      countryName: countryDisplayName(c.country.iso2, c.country.nameKey),
       timezone: c.timezone,
       status: c.status,
       isOrigin: c.isOrigin,

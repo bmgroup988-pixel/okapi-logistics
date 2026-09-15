@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import type { Paginated } from '../lib/types';
 import { ErrorText, Loading, Modal, Pill } from '../components/ui';
+import { useCityLookup } from '../lib/geo';
 
 interface Partner {
   id: string;
@@ -54,6 +55,8 @@ export function PartnerSettlements() {
     queryKey: ['admin-delivery-partners-all'],
     queryFn: () => api<Partner[]>('/admin/delivery-partners'),
   });
+  const cityLookup = useCityLookup();
+  const cityLabel = (code: string) => (cityLookup[code]?.name ? `${code} — ${cityLookup[code]!.name}` : code);
 
   const settlements = useQuery({
     queryKey: ['partner-settlements', deliveryPartnerId],
@@ -91,7 +94,7 @@ export function PartnerSettlements() {
           <select value={deliveryPartnerId} onChange={(e) => setDeliveryPartnerId(e.target.value)}>
             <option value="">Tous</option>
             {(partners.data ?? []).map((p) => (
-              <option key={p.id} value={p.id}>{p.name} ({p.cityCode})</option>
+              <option key={p.id} value={p.id}>{p.name} ({cityLabel(p.cityCode)})</option>
             ))}
           </select>
         </div>
@@ -138,7 +141,7 @@ export function PartnerSettlements() {
             <select value={genPartnerId} onChange={(e) => setGenPartnerId(e.target.value)}>
               <option value="">—</option>
               {(partners.data ?? []).map((p) => (
-                <option key={p.id} value={p.id}>{p.name} ({p.cityCode})</option>
+                <option key={p.id} value={p.id}>{p.name} ({cityLabel(p.cityCode)})</option>
               ))}
             </select>
           </div>

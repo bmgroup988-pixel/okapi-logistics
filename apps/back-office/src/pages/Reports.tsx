@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import type { Paginated, ParcelSummary } from '../lib/types';
-import { Loading, Pill, paymentKind } from '../components/ui';
+import { CityLabel, Loading, Pill, paymentKind } from '../components/ui';
 
 interface FinancialStatus {
   currency: string;
@@ -19,6 +19,7 @@ interface FinancialStatus {
     agencyCode: string;
     agencyName: string;
     countryIso2: string;
+    countryName: string;
     billingCurrency: string;
     parcelCount: number;
     byStatus: Record<string, number>;
@@ -137,7 +138,10 @@ export function Reports() {
                     <td>
                       {a.agencyName} <span className="muted mono">({a.agencyCode})</span>
                     </td>
-                    <td>{a.countryIso2}</td>
+                    <td className="mono">
+                      {a.countryIso2}
+                      <span className="city-name"> ({a.countryName})</span>
+                    </td>
                     <td>{a.parcelCount}</td>
                     <td className="mono">{money(a.billed, currency)}</td>
                     <td className="mono">{money(a.collected, currency)}</td>
@@ -178,7 +182,7 @@ export function Reports() {
               {(unpaid.data?.data ?? []).map((p) => (
                 <tr key={p.id}>
                   <td className="mono">{p.trackingNumber}</td>
-                  <td>{p.destinationCityCode}</td>
+                  <td><CityLabel code={p.destinationCityCode} /></td>
                   <td>{p.status}</td>
                   <td>
                     <Pill kind={paymentKind(p.paymentStatus)}>{p.paymentStatus}</Pill>

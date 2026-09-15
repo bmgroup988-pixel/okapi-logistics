@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, uuid } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { DocumentItem, ParcelDetail as ParcelD, Payment } from '../lib/types';
-import { ErrorText, Loading, Modal, Money, Pill, paymentKind, statusKind } from '../components/ui';
+import { CityLabel, CityPair, ErrorText, Loading, Modal, Money, Pill, paymentKind, statusKind } from '../components/ui';
 
 type Tab = 'suivi' | 'paiements' | 'photos' | 'documents';
 
@@ -93,7 +93,7 @@ export function ParcelDetail() {
           <div className="card">
             <h3>Détails</h3>
             <p>
-              {p.originCityCode} → {p.destinationCityCode} · {p.transportMode} · {p.weightKg} kg ·{' '}
+              <CityPair origin={p.originCityCode} destination={p.destinationCityCode} /> · {p.transportMode} · {p.weightKg} kg ·{' '}
               {p.contentNature}
             </p>
             <p className="muted">
@@ -424,8 +424,8 @@ function TransitionModal({
             <p className="muted">Chargement…</p>
           ) : (partners.data ?? []).length === 0 ? (
             <p className="error">
-              Aucun partenaire actif pour {destinationCityCode} — créez-en un dans « Partenaires
-              de livraison » avant de remettre ce colis.
+              Aucun partenaire actif pour <CityLabel code={destinationCityCode} /> — créez-en un dans
+              « Partenaires de livraison » avant de remettre ce colis.
             </p>
           ) : (
             <select value={deliveryPartnerId} onChange={(e) => setDeliveryPartnerId(e.target.value)}>

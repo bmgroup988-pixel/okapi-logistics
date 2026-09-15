@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { City } from '../lib/types';
-import { ErrorText, Loading } from '../components/ui';
+import { CityLabel, ErrorText, Loading } from '../components/ui';
 
 interface Tariff {
   id: string;
@@ -23,7 +23,7 @@ export function Tariffs() {
   const list = useQuery({ queryKey: ['tariffs'], queryFn: () => api<Tariff[]>('/admin/tariffs') });
   const cities = useQuery({
     queryKey: ['ref-cities'],
-    queryFn: () => api<(City & { code: string })[]>('/reference/cities'),
+    queryFn: () => api<(City & { code: string; name: string })[]>('/reference/cities'),
   });
 
   const [f, setF] = useState({
@@ -66,7 +66,7 @@ export function Tariffs() {
             <tbody>
               {(list.data ?? []).map((t) => (
                 <tr key={t.id}>
-                  <td>{t.destinationCityCode ?? '(corridor)'}</td>
+                  <td>{t.destinationCityCode ? <CityLabel code={t.destinationCityCode} /> : '(corridor)'}</td>
                   <td>{t.mode}</td>
                   <td className="mono">{t.pricePerKg} {t.currency}</td>
                   <td>{t.fixedFee}</td>
@@ -89,7 +89,7 @@ export function Tariffs() {
               <select value={f.destinationCityId} onChange={(e) => set('destinationCityId', e.target.value)}>
                 <option value="">—</option>
                 {(cities.data ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>{c.code}</option>
+                  <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
                 ))}
               </select>
             </div>

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { ParcelStatus } from '@prisma/client';
-import { dAdd, dSub } from '@okapi/shared';
+import { countryDisplayName, dAdd, dSub } from '@okapi/shared';
 import type { CurrentUser } from '../auth/current-user';
 import { parcelScopeWhere, paymentScopeWhere } from '../auth/scope';
 import { PrismaService } from '../prisma/prisma.service';
@@ -16,6 +16,7 @@ interface AgencyRow {
   agencyCode: string;
   agencyName: string;
   countryIso2: string;
+  countryName: string;
   billingCurrency: string;
   parcelCount: number;
   byStatus: Record<string, number>;
@@ -85,6 +86,7 @@ export class ReportsService {
           agencyCode: agency?.code ?? '—',
           agencyName: agency?.name ?? 'Agence inconnue',
           countryIso2: agency?.country.iso2 ?? '—',
+          countryName: agency ? countryDisplayName(agency.country.iso2, agency.country.nameKey) : '—',
           billingCurrency: agency?.billingCurrency ?? this.fx.referenceCurrency,
           parcelCount: 0,
           byStatus: {},

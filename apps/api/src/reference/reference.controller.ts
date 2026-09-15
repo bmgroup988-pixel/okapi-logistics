@@ -1,4 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
+import { countryDisplayName, humanizeNameKey } from '@okapi/shared';
 import { z } from 'zod';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { PrismaService } from '../prisma/prisma.service';
@@ -20,8 +21,10 @@ export class ReferenceController {
     return rows.map((c) => ({
       id: c.id,
       code: c.code,
+      name: humanizeNameKey(c.nameKey),
       countryId: c.countryId,
       countryIso2: c.country.iso2,
+      countryName: countryDisplayName(c.country.iso2, c.country.nameKey),
       timezone: c.timezone,
       /// HUB / PARTNER / PLANNED — addendum 08, §1.2. Une destination
       /// PARTNER requiert le choix d'un partenaire de livraison (voir
@@ -96,6 +99,7 @@ export class ReferenceController {
     return rows.map((c) => ({
       id: c.id,
       iso2: c.iso2,
+      name: countryDisplayName(c.iso2, c.nameKey),
       defaultCurrency: c.defaultCurrency,
       defaultLocale: c.defaultLocale,
       unpaidDeliveryPolicy: c.unpaidDeliveryPolicy,

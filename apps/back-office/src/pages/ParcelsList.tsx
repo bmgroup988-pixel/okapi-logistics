@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { Paginated, ParcelSummary } from '../lib/types';
-import { Money, Pill, statusKind, paymentKind, Loading } from '../components/ui';
+import { CityPair, Money, Pill, statusKind, paymentKind, Loading } from '../components/ui';
 
 export function ParcelsList() {
   const [q, setQ] = useState('');
@@ -79,7 +79,7 @@ export function ParcelsList() {
                     <td>
                       <Link className="mono" to={`/parcels/${p.id}`}>{p.trackingNumber}</Link>
                     </td>
-                    <td>{p.originCityCode} → {p.destinationCityCode}</td>
+                    <td><CityPair origin={p.originCityCode} destination={p.destinationCityCode} /></td>
                     <td>{p.weightKg} kg</td>
                     <td><Pill kind={statusKind(p.status)}>{p.status}</Pill></td>
                     <td><Pill kind={paymentKind(p.paymentStatus)}>{p.paymentStatus}</Pill></td>

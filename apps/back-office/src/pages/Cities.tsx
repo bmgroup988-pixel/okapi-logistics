@@ -6,14 +6,17 @@ import { ErrorText, Loading, Pill } from '../components/ui';
 interface Country {
   id: string;
   iso2: string;
+  name: string;
 }
 
 interface City {
   id: string;
   code: string;
   nameKey: string;
+  name: string;
   countryId: string;
   countryIso2: string;
+  countryName: string;
   timezone: string;
   status: 'HUB' | 'PARTNER' | 'PLANNED';
   isOrigin: boolean;
@@ -100,8 +103,14 @@ export function Cities() {
             <tbody>
               {(cities.data ?? []).map((c) => (
                 <tr key={c.id}>
-                  <td className="mono">{c.code}</td>
-                  <td>{c.countryIso2}</td>
+                  <td className="mono">
+                    {c.code}
+                    <span className="city-name"> ({c.name})</span>
+                  </td>
+                  <td className="mono">
+                    {c.countryIso2}
+                    <span className="city-name"> ({c.countryName})</span>
+                  </td>
                   <td className="muted">{c.timezone}</td>
                   <td>
                     {editingId === c.id ? (
@@ -155,7 +164,7 @@ export function Cities() {
             <select value={form.countryId} onChange={(e) => set('countryId', e.target.value)}>
               <option value="">—</option>
               {(countries.data ?? []).map((c) => (
-                <option key={c.id} value={c.id}>{c.iso2}</option>
+                <option key={c.id} value={c.id}>{c.iso2} — {c.name}</option>
               ))}
             </select>
           </div>

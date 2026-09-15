@@ -126,6 +126,7 @@ export interface PublicTrackingDto {
   /** libellé synthétique, sans montant */
   paymentState: 'PAID' | 'PARTIAL' | 'PENDING';
   destinationCityCode: string;
+  destinationCityName: string;
   registeredAt: string;
   photoUrl: string | null;
   steps: Array<{

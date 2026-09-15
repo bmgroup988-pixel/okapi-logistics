@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { Paginated, ParcelSummary } from '../lib/types';
-import { Pill, statusKind, paymentKind, Loading } from '../components/ui';
+import { CityPair, Pill, statusKind, paymentKind, Loading } from '../components/ui';
 
 function useCount(query: Record<string, string>) {
   return useQuery({
@@ -71,7 +71,7 @@ export function Dashboard() {
                     </Link>
                   </td>
                   <td>
-                    {p.originCityCode} → {p.destinationCityCode}
+                    <CityPair origin={p.originCityCode} destination={p.destinationCityCode} />
                   </td>
                   <td>
                     <Pill kind={statusKind(p.status)}>{p.status}</Pill>

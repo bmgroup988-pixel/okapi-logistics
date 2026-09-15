@@ -3,6 +3,7 @@ export interface PublicTracking {
   status: string;
   paymentState: 'PAID' | 'PARTIAL' | 'PENDING';
   destinationCityCode: string;
+  destinationCityName: string;
   registeredAt: string;
   photoUrl: string | null;
   steps: Array<{ status: string; locationLabel: string | null; at: string }>;
