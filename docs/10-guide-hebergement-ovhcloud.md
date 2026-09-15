@@ -15,15 +15,19 @@ propres noms de domaine. C'est le **« démarrage simplifié »** décrit en doc
 un vrai lancement, migrable ensuite vers des services managés (base de données, stockage) sans
 changer une ligne de code — seulement des variables d'environnement.
 
-**Coût indicatif** : un VPS OVHcloud suffisant (4 vCPU / 8 Go RAM) coûte environ 15–25 €/mois. Un nom
-de domaine coûte 10–15 €/an.
+**Coût indicatif** (tarifs OVHcloud France vérifiés le 2026-09-15, gamme VPS 2027) : le **VPS-2**
+(4 vCores / 8 Go RAM / 75 Go NVMe) coûte **7,21 € HT/mois (8,65 € TTC)** — suffisant pour les 3 apps +
+PostgreSQL + MinIO en démarrage. Le **VPS-3** (6 vCores / 12 Go RAM / 100 Go NVMe, 10,40 € HT soit
+12,48 € TTC/mois) donne davantage de marge si le volume grossit vite. Sauvegarde quotidienne et
+anti-DDoS déjà inclus dans ces deux tarifs. Un nom de domaine coûte 10–15 €/an en plus.
 
 ---
 
 ## 1. Créer le compte OVHcloud
 
-1. Aller sur [ovhcloud.com](https://www.ovhcloud.com), créer un compte (identité + moyen de paiement
-   — **c'est vous qui créez le compte et entrez les informations de paiement**, jamais un tiers).
+1. Aller sur **[auth.eu.ovhcloud.com](https://auth.eu.ovhcloud.com)** (Espace client OVHcloud —
+   lien direct vérifié) et cliquer « **Créer un compte** ». **C'est vous qui créez le compte et
+   entrez les informations de paiement, jamais un tiers.**
 2. Activer la vérification en deux étapes sur le compte (sécurité minimale pour un compte qui gère
    de la production).
 
@@ -37,8 +41,10 @@ par exemple avec `okapilogistics.com` :
 
 ## 3. Commander le VPS
 
-1. Catalogue OVHcloud → **VPS** → gamme **VPS Value** ou **VPS Essential** (4 vCPU / 8 Go RAM
-   minimum recommandé pour les 3 apps + PostgreSQL sur la même machine).
+1. Aller sur **[ovhcloud.com/fr/vps/](https://www.ovhcloud.com/fr/vps/)** (page produit vérifiée) et
+   cliquer « **Configurer** » sous **VPS-2** (4 vCores / 8 Go RAM / 75 Go NVMe, 8,65 € TTC/mois) —
+   suffisant pour les 3 apps + PostgreSQL sur la même machine ; prendre **VPS-3** (12 Go RAM,
+   12,48 € TTC/mois) si le budget le permet, pour plus de marge.
 2. **Région : Gravelines (GRA) ou Strasbourg (SBG)** — région UE, cohérent avec la contrainte RGPD
    documentée en docs/08 §3, et bonne latence vers l'Afrique de l'Ouest/Centrale.
 3. Image : **Ubuntu 24.04 LTS**.
