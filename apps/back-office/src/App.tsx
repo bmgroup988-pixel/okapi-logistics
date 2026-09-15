@@ -11,6 +11,9 @@ import { ExchangeRates } from './pages/ExchangeRates';
 import { Users } from './pages/Users';
 import { Branding } from './pages/Branding';
 import { Reports } from './pages/Reports';
+import { Cities } from './pages/Cities';
+import { DeliveryPartners } from './pages/DeliveryPartners';
+import { PartnerSettlements } from './pages/PartnerSettlements';
 
 function Guard({ perm, children }: { perm?: string; children: React.ReactNode }) {
   const { can } = useAuth();
@@ -41,6 +44,9 @@ export function App() {
         <Route path="/tariffs" element={<Guard perm="tariff:read"><Tariffs /></Guard>} />
         <Route path="/exchange-rates" element={<Guard perm="fx:read"><ExchangeRates /></Guard>} />
         <Route path="/users" element={<Guard perm="user:manage"><Users /></Guard>} />
+        <Route path="/cities" element={<Guard perm="city:write"><Cities /></Guard>} />
+        <Route path="/delivery-partners" element={<Guard perm="city:write"><DeliveryPartners /></Guard>} />
+        <Route path="/partner-settlements" element={<Guard perm="settlement:read"><PartnerSettlements /></Guard>} />
         <Route path="/branding" element={<Guard perm="config:write"><Branding /></Guard>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

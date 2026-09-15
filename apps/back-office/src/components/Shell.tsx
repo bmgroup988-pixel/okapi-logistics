@@ -39,15 +39,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {can('parcel:create') && item('/parcels/new', t('nav.new'))}
         {can('parcel:read') && item('/parcels', t('nav.parcels'))}
 
-        {(can('report:read') || can('tariff:write') || can('fx:write')) && (
+        {(can('report:read') || can('tariff:write') || can('fx:write') || can('settlement:read')) && (
           <div className="sep">{t('nav.admin')}</div>
         )}
         {can('report:read') && item('/reports', t('nav.reports'))}
         {can('tariff:read') && item('/tariffs', t('nav.tariffs'))}
         {can('fx:read') && item('/exchange-rates', t('nav.fx'))}
+        {can('settlement:read') && item('/partner-settlements', t('nav.settlements'))}
 
-        {(can('user:manage') || can('config:write')) && <div className="sep">{t('nav.config')}</div>}
+        {(can('user:manage') || can('config:write') || can('city:write')) && (
+          <div className="sep">{t('nav.config')}</div>
+        )}
         {can('user:manage') && item('/users', t('nav.users'))}
+        {can('city:write') && item('/cities', t('nav.cities'))}
+        {can('city:write') && item('/delivery-partners', t('nav.deliveryPartners'))}
         {can('config:write') && item('/branding', t('nav.branding'))}
       </nav>
 
