@@ -1,11 +1,14 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { LOCALES, setLocale, useT, type Locale } from '../lib/i18n';
+import { useApplyBrandColors, useBranding } from '../lib/branding';
 import { Footer } from './Footer';
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { me, logout, can } = useAuth();
   const { t, locale } = useT();
+  const { data: branding } = useBranding();
+  useApplyBrandColors();
 
   const item = (to: string, label: string) => (
     <NavLink to={to} className={({ isActive }) => (isActive ? 'active' : '')} end={to === '/'}>
@@ -16,7 +19,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <span className="brand">Okapi Logistics</span>
+        {branding?.logoUrl ? <img src={branding.logoUrl} alt="Logo" className="brand-logo" /> : null}
+        <span className={branding?.logoUrl ? 'brand no-dot' : 'brand'}>Okapi Logistics</span>
         <span className="spacer" />
         <select
           value={locale}

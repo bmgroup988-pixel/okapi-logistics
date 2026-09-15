@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { useT } from '../lib/i18n';
 import { ApiError } from '../lib/api';
+import { useApplyBrandColors, useBranding } from '../lib/branding';
 import { Footer } from '../components/Footer';
 
 export function Login() {
   const { login } = useAuth();
   const { t } = useT();
+  const { data: branding } = useBranding();
+  useApplyBrandColors();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
@@ -36,7 +39,11 @@ export function Login() {
     <div className="login-wrap">
       <div className="login-center">
       <form className="login-card" onSubmit={submit}>
-        <div className="logo" />
+        {branding?.logoUrl ? (
+          <img src={branding.logoUrl} alt="Logo" className="logo" style={{ objectFit: 'contain', background: '#fff' }} />
+        ) : (
+          <div className="logo" />
+        )}
         <h2 style={{ marginTop: 0 }}>{t('app.title')}</h2>
         <div className="field">
           <label htmlFor="email">{t('auth.email')}</label>

@@ -14,6 +14,33 @@ export async function generateMetadata({
   return { title: `Okapi Logistics — ${tracking}` };
 }
 
+function InfoScreen({
+  title,
+  body,
+  lang,
+  retryLabel,
+  helpLabel,
+}: {
+  title: string;
+  body: string;
+  lang: string;
+  retryLabel: string;
+  helpLabel: string;
+}) {
+  return (
+    <main className="page-narrow">
+      <h1>{title}</h1>
+      <p className="sub">{body}</p>
+      <Link className="primary" href={`/${lang}`} style={{ display: 'inline-block', textDecoration: 'none' }}>
+        {retryLabel}
+      </Link>
+      <p className="hint" style={{ marginTop: 16 }}>
+        {helpLabel} <a href="mailto:contact.gokapi@gmail.com">contact.gokapi@gmail.com</a>
+      </p>
+    </main>
+  );
+}
+
 export default async function TrackingPage({
   params,
 }: {
@@ -22,23 +49,39 @@ export default async function TrackingPage({
   const { lang: rawLang, tracking } = await params;
   const lang = resolveLocale(rawLang);
   const t = DICT[lang];
-  const data = await fetchTracking(tracking.toUpperCase());
+  const result = await fetchTracking(tracking);
 
-  if (!data) {
+  if (result.kind === 'invalid_format') {
     return (
-      <main>
-        <h1>{t.notFoundTitle}</h1>
-        <p className="sub">{t.notFoundBody}</p>
-        <Link className="primary" href={`/${lang}`} style={{ display: 'inline-block', textDecoration: 'none' }}>
-          {t.retry}
-        </Link>
-      </main>
+      <InfoScreen
+        title={t.invalidFormatTitle}
+        body={t.invalidFormatBody}
+        lang={lang}
+        retryLabel={t.retry}
+        helpLabel={t.help}
+      />
     );
   }
 
-  // HANDED_TO_PARTNER n'est pas une étape de la frise principale : le colis a
-  // dépassé « Arrivé » (remis à un partenaire de livraison locale) sans être
-  // encore « Livré ». On l'affiche visuellement au niveau d'« Arrivé ».
+  if (result.kind === 'error') {
+    return (
+      <InfoScreen title={t.errorTitle} body={t.errorBody} lang={lang} retryLabel={t.retry} helpLabel={t.help} />
+    );
+  }
+
+  if (result.kind === 'not_found') {
+    return (
+      <InfoScreen
+        title={t.notFoundTitle}
+        body={t.notFoundBody}
+        lang={lang}
+        retryLabel={t.retry}
+        helpLabel={t.help}
+      />
+    );
+  }
+
+  const data = result.data;
   const reachedIndex =
     data.status === 'HANDED_TO_PARTNER' ? ORDER.indexOf('ARRIVE') : ORDER.indexOf(data.status);
   const paymentPill =
@@ -49,7 +92,7 @@ export default async function TrackingPage({
         : { cls: 'pending', label: t.paymentPending };
 
   return (
-    <main>
+    <main className="page-narrow">
       <div className="mono">
         {t.parcel} {data.trackingNumber}
       </div>
@@ -57,15 +100,25 @@ export default async function TrackingPage({
         <span className="pill status">● {t.steps[data.status] ?? data.status}</span>
       </h1>
 
-      <div className="stepper" aria-hidden="true">
-        {ORDER.map((s, i) => (
-          <span key={s} style={{ display: 'contents' }}>
-            {i > 0 && <span className="seg" />}
-            <span className={`dot${reachedIndex >= i && reachedIndex >= 0 ? ' done' : ''}`} />
-          </span>
-        ))}
-        <span style={{ marginLeft: 8 }}>{ORDER.map((s) => t.steps[s]).join(' · ')}</span>
-      </div>
+      {data.status === 'ANNULE' ? (
+        <p className="card" style={{ color: 'var(--warn)' }}>
+          {t.cancelledNote}
+        </p>
+      ) : data.status === 'RETOURNE' ? (
+        <p className="card" style={{ color: 'var(--warn)' }}>
+          {t.returnedNote}
+        </p>
+      ) : (
+        <div className="stepper" aria-hidden="true">
+          {ORDER.map((s, i) => (
+            <span key={s} style={{ display: 'contents' }}>
+              {i > 0 && <span className="seg" />}
+              <span className={`dot${reachedIndex >= i && reachedIndex >= 0 ? ' done' : ''}`} />
+            </span>
+          ))}
+          <span style={{ marginLeft: 8 }}>{ORDER.map((s) => t.steps[s]).join(' · ')}</span>
+        </div>
+      )}
 
       <div>
         <span className={`pill ${paymentPill.cls}`}>⬤ {paymentPill.label}</span>
@@ -99,6 +152,10 @@ export default async function TrackingPage({
           ))}
         </ul>
       </div>
+
+      <Link href={`/${lang}`} className="hint" style={{ display: 'inline-block', marginTop: 8 }}>
+        ← {t.trackAnother}
+      </Link>
     </main>
   );
 }

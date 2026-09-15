@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { json } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { buildConfig } from './config/configuration';
@@ -13,6 +14,9 @@ async function bootstrap(): Promise<void> {
 
   app.setGlobalPrefix('api/v1');
   app.use(helmet());
+  // Limite relevée (défaut Express ~100kb) : le logo (identité visuelle,
+  // W-SAD-03) est stocké en data URI base64 dans un réglage JSON.
+  app.use(json({ limit: '3mb' }));
   app.enableCors({
     origin: config.corsOrigins.length ? config.corsOrigins : true,
     credentials: true,

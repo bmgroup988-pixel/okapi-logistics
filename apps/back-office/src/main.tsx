@@ -2,9 +2,14 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { registerSW } from 'virtual:pwa-register';
 import { AuthProvider } from './lib/auth';
 import { App } from './App';
 import './index.css';
+
+// Installable sur mobile (agent en agence) — app shell mis à jour
+// automatiquement en tâche de fond, jamais les appels /api (voir vite.config.ts).
+registerSW({ immediate: true });
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 15_000 } },

@@ -6,7 +6,7 @@ const INK = rgb(0.15, 0.15, 0.18);
 const MUTE = rgb(0.42, 0.42, 0.46);
 
 function copyrightLine(): string {
-  return `(C) ${new Date().getFullYear()} Okapi Group. Tous droits reserves.`;
+  return `(C) ${new Date().getFullYear()} Global Okapi Group. Tous droits reserves.`;
 }
 
 export interface LabelData {

@@ -10,30 +10,50 @@ export interface PublicTracking {
 
 export interface Branding {
   brand: { navy: string; orange: string; turquoise: string; anthracite: string };
+  logoUrl: string | null;
   contactEmail: string;
+  contactPhone: string | null;
+  contactWhatsapp: string | null;
+  website: string | null;
+  social: { facebook: string | null; instagram: string | null; tiktok: string | null; x: string | null };
   slogans: { fr: string; en: string; zh: string };
   locales: string[];
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:3000/api/v1';
 
-export async function fetchTracking(trackingNumber: string): Promise<PublicTracking | null> {
+export type TrackingResult =
+  | { kind: 'found'; data: PublicTracking }
+  | { kind: 'not_found' }
+  | { kind: 'invalid_format' }
+  | { kind: 'error' };
+
+const TRACKING_FORMAT = /^OKP\d{8}[A-Z]{3}$/;
+
+export async function fetchTracking(trackingNumberRaw: string): Promise<TrackingResult> {
+  const trackingNumber = trackingNumberRaw.trim().toUpperCase();
+  if (!TRACKING_FORMAT.test(trackingNumber)) return { kind: 'invalid_format' };
   try {
     const res = await fetch(`${API_BASE}/public/parcels/${encodeURIComponent(trackingNumber)}`, {
       cache: 'no-store',
     });
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error(`API ${res.status}`);
-    return (await res.json()) as PublicTracking;
+    if (res.status === 404) return { kind: 'not_found' };
+    if (!res.ok) return { kind: 'error' };
+    return { kind: 'found', data: (await res.json()) as PublicTracking };
   } catch {
-    return null;
+    return { kind: 'error' };
   }
 }
 
 export async function fetchBranding(): Promise<Branding> {
   const fallback: Branding = {
     brand: { navy: '#170655', orange: '#E47911', turquoise: '#1CA9C9', anthracite: '#2E3138' },
+    logoUrl: null,
     contactEmail: 'contact.gokapi@gmail.com',
+    contactPhone: null,
+    contactWhatsapp: null,
+    website: null,
+    social: { facebook: null, instagram: null, tiktok: null, x: null },
     slogans: {
       fr: 'Le futur du commerce africain',
       en: 'The future of African trade',
@@ -44,7 +64,14 @@ export async function fetchBranding(): Promise<Branding> {
   try {
     const res = await fetch(`${API_BASE}/public/branding`, { next: { revalidate: 300 } });
     if (!res.ok) return fallback;
-    return { ...fallback, ...((await res.json()) as Partial<Branding>) };
+    const data = (await res.json()) as Partial<Branding>;
+    return {
+      ...fallback,
+      ...data,
+      brand: { ...fallback.brand, ...data.brand },
+      social: { ...fallback.social, ...data.social },
+      slogans: { ...fallback.slogans, ...data.slogans },
+    };
   } catch {
     return fallback;
   }

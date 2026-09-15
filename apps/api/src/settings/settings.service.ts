@@ -20,7 +20,7 @@ export class SettingsService {
     return out;
   }
 
-  /** Sous-ensemble public : identité visuelle + coordonnées + slogans. */
+  /** Sous-ensemble public : identité visuelle + coordonnées + réseaux + slogans. */
   async branding() {
     const map = await this.globalMap();
     return {
@@ -30,7 +30,17 @@ export class SettingsService {
         turquoise: map['brand.turquoise'] ?? '#1CA9C9',
         anthracite: map['brand.anthracite'] ?? '#2E3138',
       },
+      logoUrl: map['branding.logoUrl'] ?? null,
       contactEmail: map['contact.email'] ?? 'contact.gokapi@gmail.com',
+      contactPhone: map['contact.phone'] ?? null,
+      contactWhatsapp: map['contact.whatsapp'] ?? null,
+      website: map['contact.website'] ?? null,
+      social: {
+        facebook: map['social.facebook'] ?? null,
+        instagram: map['social.instagram'] ?? null,
+        tiktok: map['social.tiktok'] ?? null,
+        x: map['social.x'] ?? null,
+      },
       slogans: {
         fr: map['footer.slogan.fr'] ?? 'Le futur du commerce africain',
         en: map['footer.slogan.en'] ?? 'The future of African trade',
