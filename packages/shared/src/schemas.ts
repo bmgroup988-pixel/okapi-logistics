@@ -161,26 +161,24 @@ export const manualRateSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
-export const tariffUpsertSchema = z
-  .object({
-    corridorId: uuid.optional().nullable(),
-    originCityId: uuid.optional().nullable(),
-    destinationCityId: uuid,
-    mode: z.enum(TRANSPORT_MODES),
-    currency: currencyCode,
-    pricePerKg: positiveDecimalString,
-    fixedFee: positiveDecimalString.default('0'),
-    minCharge: positiveDecimalString.default('0'),
-    adValoremEnabled: z.boolean().default(false),
-    adValoremRate: positiveDecimalString.default('0'),
-    overrideMin: decimalString().default('-0.15'),
-    overrideMax: decimalString().default('0.15'),
-    validFrom: z.string().date().optional(),
-  })
-  .refine((d) => !!d.corridorId || (!!d.originCityId && !!d.destinationCityId), {
-    message: 'un corridor ou un couple (ville origine, ville destination) est requis',
-    path: ['corridorId'],
-  });
+export const tariffUpsertSchema = z.object({
+  corridorId: uuid.optional().nullable(),
+  // `originCityId` absent/null = tarif « toutes origines » vers cette destination
+  // (2e palier de résolution — pricing.service.ts). `destinationCityId` seul
+  // suffit donc déjà à définir une cible valide ; pas de refine supplémentaire.
+  originCityId: uuid.optional().nullable(),
+  destinationCityId: uuid,
+  mode: z.enum(TRANSPORT_MODES),
+  currency: currencyCode,
+  pricePerKg: positiveDecimalString,
+  fixedFee: positiveDecimalString.default('0'),
+  minCharge: positiveDecimalString.default('0'),
+  adValoremEnabled: z.boolean().default(false),
+  adValoremRate: positiveDecimalString.default('0'),
+  overrideMin: decimalString().default('-0.15'),
+  overrideMax: decimalString().default('0.15'),
+  validFrom: z.string().date().optional(),
+});
 
 export const quoteRequestSchema = z.object({
   originCityId: uuid,

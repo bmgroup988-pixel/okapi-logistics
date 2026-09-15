@@ -1,15 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { API_ERROR_CODES, crossConvert, currencyDecimals, dRound, effectiveRate } from '@okapi/shared';
 import type { Env } from '../config/env.schema';
 import { PrismaService } from '../prisma/prisma.service';
 
-export class FxRateMissingError extends Error {
-  constructor(
-    public readonly from: string,
-    public readonly to: string,
-  ) {
-    super(`Aucun taux de change disponible pour ${from} -> ${to}`);
+/** `HttpException` (pas `Error` nu) — voir la note sur `TariffMissingError` (pricing.service.ts). */
+export class FxRateMissingError extends BadRequestException {
+  public readonly from: string;
+  public readonly to: string;
+
+  constructor(from: string, to: string) {
+    super({
+      error: {
+        code: API_ERROR_CODES.FX_RATE_MISSING,
+        message: `Aucun taux de change disponible pour ${from} -> ${to}`,
+      },
+    });
+    this.from = from;
+    this.to = to;
   }
 }
 

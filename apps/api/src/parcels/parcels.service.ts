@@ -264,6 +264,8 @@ export class ParcelsService {
           billingCurrency,
           amountDue: totalBillingAmount,
           amountPaid: '0',
+          // `balance` est une colonne normale (pas generee — voir 00_constraints.sql) :
+          // toujours ecrite explicitement, garantie coherente par ck_parcel_balance.
           balance: totalBillingAmount,
           referenceCurrency: this.fx.referenceCurrency,
           amountDueReference: toRef.amount,

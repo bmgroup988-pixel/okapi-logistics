@@ -5,7 +5,11 @@ export function Pill({ kind, children }: { kind?: string; children: ReactNode })
 }
 
 export function statusKind(status: string): string {
-  return status === 'LIVRE' ? 'ok' : status === 'ANNULE' ? 'err' : status === 'EN_TRANSIT' ? 'info' : '';
+  if (status === 'LIVRE') return 'ok';
+  if (status === 'ANNULE') return 'err';
+  if (status === 'EN_TRANSIT') return 'info';
+  if (status === 'HANDED_TO_PARTNER') return 'warn';
+  return '';
 }
 export function paymentKind(s: string): string {
   return s === 'PAYE' ? 'ok' : s === 'PARTIEL' ? 'warn' : 'err';

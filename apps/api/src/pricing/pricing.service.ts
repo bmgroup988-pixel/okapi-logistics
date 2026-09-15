@@ -1,11 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import type { TransportMode } from '@prisma/client';
-import { currencyDecimals, quote, type QuoteResult } from '@okapi/shared';
+import { API_ERROR_CODES, currencyDecimals, quote, type QuoteResult } from '@okapi/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
-export class TariffMissingError extends Error {
+/**
+ * Doit être une `HttpException` (pas un `Error` nu) : `AllExceptionsFilter` ne
+ * mappe que les `HttpException` vers un statut précis — un `Error` brut tombe
+ * en 500 alors que « tarif non configuré » est une condition métier normale
+ * (à corriger côté configuration, pas une panne serveur).
+ */
+export class TariffMissingError extends BadRequestException {
   constructor(cityCode: string, mode: string) {
-    super(`Aucun tarif (prix par kg) défini pour ${cityCode} en mode ${mode}`);
+    super({
+      error: {
+        code: API_ERROR_CODES.TARIFF_MISSING,
+        message: `Aucun tarif (prix par kg) défini pour ${cityCode} en mode ${mode}`,
+      },
+    });
   }
 }
 

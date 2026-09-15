@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api, uuid } from '../lib/api';
@@ -10,6 +10,15 @@ interface CityRef extends City {
   countryIso2: string;
   isOrigin: boolean;
   isDestination: boolean;
+  status: 'HUB' | 'PARTNER' | 'PLANNED';
+}
+
+interface PartnerOption {
+  id: string;
+  name: string;
+  coverageZone: string | null;
+  isPreferred: boolean;
+  currentTariff: { pricePerKg: string; currency: string } | null;
 }
 
 function Steps({ n }: { n: number }) {
@@ -63,6 +72,7 @@ export function ParcelNew() {
     pricingOverridePct: '',
     clientChannel: 'WHATSAPP',
     clientLocale: 'fr',
+    deliveryPartnerId: '',
     consent: false,
   });
   const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
@@ -88,6 +98,32 @@ export function ParcelNew() {
 
   const origins = useMemo(() => (cities.data ?? []).filter((c) => c.isOrigin), [cities.data]);
   const dests = useMemo(() => (cities.data ?? []).filter((c) => c.isDestination), [cities.data]);
+  const destinationCity = useMemo(
+    () => dests.find((c) => c.id === form.destinationCityId),
+    [dests, form.destinationCityId],
+  );
+  const isPartnerDestination = destinationCity?.status === 'PARTNER';
+
+  const partners = useQuery({
+    queryKey: ['delivery-partners-for-city', form.destinationCityId],
+    queryFn: () => api<PartnerOption[]>('/reference/delivery-partners', { query: { cityId: form.destinationCityId } }),
+    enabled: isPartnerDestination,
+  });
+
+  // Présélectionne le partenaire préféré, ou l'unique partenaire actif — l'agent
+  // peut toujours changer si la zone exacte du destinataire l'exige.
+  useEffect(() => {
+    if (!isPartnerDestination) {
+      if (form.deliveryPartnerId) set('deliveryPartnerId', '');
+      return;
+    }
+    if (form.deliveryPartnerId || !partners.data) return;
+    const preferred = partners.data.find((p) => p.isPreferred);
+    if (preferred) set('deliveryPartnerId', preferred.id);
+    else if (partners.data.length === 1) set('deliveryPartnerId', partners.data[0]!.id);
+    // volontairement sans form.deliveryPartnerId dans les deps : ne réagit qu'aux
+    // changements de destination/liste de partenaires, pas au choix de l'agent.
+  }, [isPartnerDestination, partners.data]);
 
   const submitStep1 = async () => {
     setError(null);
@@ -110,6 +146,7 @@ export function ParcelNew() {
           pricingOverridePct: form.pricingOverridePct || undefined,
           clientChannel: form.clientChannel,
           clientLocale: form.clientLocale,
+          deliveryPartnerId: form.deliveryPartnerId || undefined,
           consent: { given: true, textVersion: 'v1-2026-01' },
         },
       });
@@ -156,6 +193,7 @@ export function ParcelNew() {
     }
   };
 
+  const needsPartnerChoice = isPartnerDestination && (partners.data ?? []).length > 0;
   const valid1 =
     form.senderName &&
     form.recipientName &&
@@ -163,7 +201,8 @@ export function ParcelNew() {
     form.destinationCityId &&
     Number(form.weightKg) > 0 &&
     form.contentNature &&
-    form.consent;
+    form.consent &&
+    (!needsPartnerChoice || form.deliveryPartnerId);
 
   return (
     <>
@@ -212,10 +251,18 @@ export function ParcelNew() {
               </div>
               <div className="field">
                 <label>Ville de destination *</label>
-                <select value={form.destinationCityId} onChange={(e) => set('destinationCityId', e.target.value)}>
+                <select
+                  value={form.destinationCityId}
+                  onChange={(e) => {
+                    set('destinationCityId', e.target.value);
+                    set('deliveryPartnerId', '');
+                  }}
+                >
                   <option value="">—</option>
                   {dests.map((c) => (
-                    <option key={c.id} value={c.id}>{c.code} ({c.countryIso2})</option>
+                    <option key={c.id} value={c.id}>
+                      {c.code} ({c.countryIso2}){c.status === 'PARTNER' ? ' — partenaire' : ''}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -277,6 +324,42 @@ export function ParcelNew() {
               <span>Le client accepte les mentions d’information (suivi, notifications).</span>
             </label>
           </div>
+
+          {isPartnerDestination && (
+            <div className="card">
+              <h3>Partenaire de livraison — {destinationCity?.code}</h3>
+              <p className="muted" style={{ marginTop: 0 }}>
+                {destinationCity?.code} n’a pas d’agence Okapi propre : la dernière étape est
+                assurée par un partenaire tiers, avec son propre tarif ajouté au montant dû.
+              </p>
+              {partners.isLoading ? (
+                <p className="muted">Chargement…</p>
+              ) : (partners.data ?? []).length === 0 ? (
+                <p className="error">
+                  Aucun partenaire actif pour cette ville — le dernier kilomètre ne sera pas
+                  facturé tant qu’aucun n’est configuré (écran « Partenaires de livraison »).
+                </p>
+              ) : (
+                <div className="field">
+                  <label>Partenaire *</label>
+                  <select
+                    value={form.deliveryPartnerId}
+                    onChange={(e) => set('deliveryPartnerId', e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {(partners.data ?? []).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.isPreferred ? ' ★ préféré' : ''}
+                        {p.coverageZone ? ` — ${p.coverageZone}` : ''}
+                        {p.currentTariff ? ` (${p.currentTariff.pricePerKg} ${p.currentTariff.currency}/kg)` : ' (aucun tarif configuré)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <Link className="btn" to="/parcels">{t('common.cancel')}</Link>

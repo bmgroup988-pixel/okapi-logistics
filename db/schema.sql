@@ -438,7 +438,11 @@ CREATE TABLE parcels (
   payment_status         payment_status NOT NULL DEFAULT 'IMPAYE',
   amount_due             numeric(18,4) NOT NULL CHECK (amount_due >= 0),
   amount_paid            numeric(18,4) NOT NULL DEFAULT 0 CHECK (amount_paid >= 0),
-  balance                numeric(18,4) GENERATED ALWAYS AS (amount_due - amount_paid) STORED,
+  -- Colonne normale (pas GENERATED) : Prisma Client ne sait pas omettre un
+  -- champ ayant un défaut applicatif, il écrit donc toujours `balance` — ce
+  -- qu'une colonne GENERATED ALWAYS refuse. Cohérence garantie à la place par
+  -- ck_parcel_balance (CHECK) ; toujours écrite explicitement par l'API.
+  balance                numeric(18,4) NOT NULL DEFAULT 0,
   reference_currency     char(3) NOT NULL REFERENCES currencies(code),
   amount_due_reference   numeric(18,4) NOT NULL,
   fx_rate_due            numeric(18,8) NOT NULL,
@@ -456,7 +460,8 @@ CREATE TABLE parcels (
   updated_by             uuid,
   created_at             timestamptz NOT NULL DEFAULT now(),
   updated_at             timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT ck_parcel_cancel_reason CHECK (status <> 'ANNULE' OR cancel_reason IS NOT NULL)
+  CONSTRAINT ck_parcel_cancel_reason CHECK (status <> 'ANNULE' OR cancel_reason IS NOT NULL),
+  CONSTRAINT ck_parcel_balance CHECK (balance = amount_due - amount_paid)
 );
 CREATE INDEX ix_parcels_agency_created  ON parcels (registration_agency_id, created_at DESC);
 CREATE INDEX ix_parcels_dashboard       ON parcels (country_id, status, payment_status, created_at);

@@ -232,6 +232,7 @@ export function ParcelDetail() {
         <TransitionModal
           parcelId={id}
           status={p.status}
+          destinationCityCode={p.destinationCityCode}
           onClose={() => setShowTransition(false)}
           onDone={() => {
             setShowTransition(false);
@@ -329,47 +330,118 @@ function EncaissementModal({
   );
 }
 
+interface CityRefLite {
+  id: string;
+  code: string;
+  status: 'HUB' | 'PARTNER' | 'PLANNED';
+}
+interface PartnerOption {
+  id: string;
+  name: string;
+  coverageZone: string | null;
+  isPreferred: boolean;
+  currentTariff: { pricePerKg: string; currency: string } | null;
+}
+
+/** Statuts atteignables depuis chaque statut — miroir de PARCEL_STATUS_FLOW (@okapi/shared). */
+const NEXT: Record<string, string[]> = {
+  ENREGISTRE: ['EN_TRANSIT'],
+  EN_TRANSIT: ['ARRIVE', 'RETOURNE'],
+  ARRIVE: ['LIVRE', 'HANDED_TO_PARTNER', 'RETOURNE'],
+  HANDED_TO_PARTNER: ['LIVRE', 'RETOURNE'],
+  RETOURNE: ['ARRIVE'],
+};
+
 function TransitionModal({
   parcelId,
   status,
+  destinationCityCode,
   onClose,
   onDone,
 }: {
   parcelId: string;
   status: string;
+  destinationCityCode: string;
   onClose: () => void;
   onDone: () => void;
 }) {
-  const NEXT: Record<string, string[]> = {
-    ENREGISTRE: ['EN_TRANSIT'],
-    EN_TRANSIT: ['ARRIVE', 'RETOURNE'],
-    ARRIVE: ['LIVRE', 'RETOURNE'],
-    RETOURNE: ['ARRIVE'],
-  };
   const options = NEXT[status] ?? [];
   const [to, setTo] = useState(options[0] ?? '');
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
+  const [deliveryPartnerId, setDeliveryPartnerId] = useState('');
+
+  const cities = useQuery({
+    queryKey: ['ref-cities-all'],
+    queryFn: () => api<CityRefLite[]>('/reference/cities'),
+    enabled: to === 'HANDED_TO_PARTNER',
+  });
+  const destCityId = cities.data?.find((c) => c.code === destinationCityCode)?.id;
+  const partners = useQuery({
+    queryKey: ['delivery-partners-for-city', destCityId],
+    queryFn: () => api<PartnerOption[]>('/reference/delivery-partners', { query: { cityId: destCityId } }),
+    enabled: to === 'HANDED_TO_PARTNER' && !!destCityId,
+  });
 
   const m = useMutation({
     mutationFn: () =>
       api(`/parcels/${parcelId}/transition`, {
         method: 'POST',
-        body: { to, note: note || undefined, unpaidOverrideReason: reason || undefined, visibleToClient: true },
+        body: {
+          to,
+          note: note || undefined,
+          unpaidOverrideReason: reason || undefined,
+          deliveryPartnerId: to === 'HANDED_TO_PARTNER' ? deliveryPartnerId : undefined,
+          visibleToClient: true,
+        },
       }),
     onSuccess: onDone,
   });
+
+  const needsPartner = to === 'HANDED_TO_PARTNER';
+  const blocked = needsPartner && !deliveryPartnerId;
 
   return (
     <Modal title={`Changer le statut — actuel : ${status}`} onClose={onClose}>
       <div className="field">
         <label>Nouveau statut *</label>
-        <select value={to} onChange={(e) => setTo(e.target.value)}>
+        <select
+          value={to}
+          onChange={(e) => {
+            setTo(e.target.value);
+            setDeliveryPartnerId('');
+          }}
+        >
           {options.map((o) => (
             <option key={o} value={o}>{o}</option>
           ))}
         </select>
       </div>
+      {needsPartner && (
+        <div className="field">
+          <label>Partenaire de livraison *</label>
+          {partners.isLoading ? (
+            <p className="muted">Chargement…</p>
+          ) : (partners.data ?? []).length === 0 ? (
+            <p className="error">
+              Aucun partenaire actif pour {destinationCityCode} — créez-en un dans « Partenaires
+              de livraison » avant de remettre ce colis.
+            </p>
+          ) : (
+            <select value={deliveryPartnerId} onChange={(e) => setDeliveryPartnerId(e.target.value)}>
+              <option value="">—</option>
+              {(partners.data ?? []).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                  {p.isPreferred ? ' ★' : ''}
+                  {p.coverageZone ? ` — ${p.coverageZone}` : ''}
+                  {p.currentTariff ? ` (${p.currentTariff.pricePerKg} ${p.currentTariff.currency}/kg)` : ''}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
       <div className="field">
         <label>Commentaire</label>
         <input value={note} onChange={(e) => setNote(e.target.value)} />
@@ -383,7 +455,7 @@ function TransitionModal({
       <ErrorText error={m.error} />
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
         <button className="btn" onClick={onClose}>Annuler</button>
-        <button className="btn primary" disabled={!to || m.isPending} onClick={() => m.mutate()}>
+        <button className="btn primary" disabled={!to || blocked || m.isPending} onClick={() => m.mutate()}>
           Confirmer
         </button>
       </div>
