@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { LOCALES, setLocale, useT, type Locale } from '../lib/i18n';
+import { Footer } from './Footer';
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { me, logout, can } = useAuth();
@@ -57,6 +58,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="main">{children}</main>
+      <Footer />
     </div>
   );
 }

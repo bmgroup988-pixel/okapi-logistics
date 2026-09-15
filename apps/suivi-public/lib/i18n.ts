@@ -32,6 +32,7 @@ type Dict = {
   help: string;
   legal: string;
   privacy: string;
+  rightsReserved: string;
   steps: Record<string, string>;
 };
 
@@ -60,10 +61,12 @@ export const DICT: Record<Locale, Dict> = {
     help: 'Besoin d’aide ?',
     legal: 'Mentions légales',
     privacy: 'Confidentialité',
+    rightsReserved: 'Tous droits réservés.',
     steps: {
       ENREGISTRE: 'Enregistré',
       EN_TRANSIT: 'En transit',
       ARRIVE: 'Arrivé',
+      HANDED_TO_PARTNER: 'En cours de livraison',
       LIVRE: 'Livré',
       ANNULE: 'Annulé',
       RETOURNE: 'Retourné',
@@ -93,10 +96,12 @@ export const DICT: Record<Locale, Dict> = {
     help: 'Need help?',
     legal: 'Legal notice',
     privacy: 'Privacy',
+    rightsReserved: 'All rights reserved.',
     steps: {
       ENREGISTRE: 'Registered',
       EN_TRANSIT: 'In transit',
       ARRIVE: 'Arrived',
+      HANDED_TO_PARTNER: 'Out for delivery',
       LIVRE: 'Delivered',
       ANNULE: 'Cancelled',
       RETOURNE: 'Returned',
@@ -125,10 +130,12 @@ export const DICT: Record<Locale, Dict> = {
     help: '需要帮助？',
     legal: '法律声明',
     privacy: '隐私',
+    rightsReserved: '版权所有。',
     steps: {
       ENREGISTRE: '已登记',
       EN_TRANSIT: '运输中',
       ARRIVE: '已到达',
+      HANDED_TO_PARTNER: '派送中',
       LIVRE: '已送达',
       ANNULE: '已取消',
       RETOURNE: '已退回',

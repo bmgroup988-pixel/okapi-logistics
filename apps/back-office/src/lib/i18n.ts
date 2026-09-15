@@ -38,6 +38,12 @@ const STRINGS: Record<string, Record<Locale, string>> = {
   'wizard.step1': { fr: 'Parties & trajet', en: 'Parties & route', zh: '双方与路线' },
   'wizard.step2': { fr: 'Photo du colis', en: 'Parcel photo', zh: '包裹照片' },
   'wizard.step3': { fr: 'Tarif & récapitulatif', en: 'Price & summary', zh: '价格与摘要' },
+  'footer.slogan': {
+    fr: '« Le futur du commerce africain »',
+    en: '"The future of African trade"',
+    zh: '"非洲贸易的未来"',
+  },
+  'footer.rights': { fr: 'Tous droits réservés.', en: 'All rights reserved.', zh: '版权所有。' },
 };
 
 let current: Locale = readStored();

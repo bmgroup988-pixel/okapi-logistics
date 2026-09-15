@@ -36,7 +36,11 @@ export default async function TrackingPage({
     );
   }
 
-  const reachedIndex = ORDER.indexOf(data.status);
+  // HANDED_TO_PARTNER n'est pas une étape de la frise principale : le colis a
+  // dépassé « Arrivé » (remis à un partenaire de livraison locale) sans être
+  // encore « Livré ». On l'affiche visuellement au niveau d'« Arrivé ».
+  const reachedIndex =
+    data.status === 'HANDED_TO_PARTNER' ? ORDER.indexOf('ARRIVE') : ORDER.indexOf(data.status);
   const paymentPill =
     data.paymentState === 'PAID'
       ? { cls: 'paid', label: t.paymentPaid }

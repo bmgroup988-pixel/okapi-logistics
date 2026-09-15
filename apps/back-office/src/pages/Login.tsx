@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { useT } from '../lib/i18n';
 import { ApiError } from '../lib/api';
+import { Footer } from '../components/Footer';
 
 export function Login() {
   const { login } = useAuth();
@@ -33,6 +34,7 @@ export function Login() {
 
   return (
     <div className="login-wrap">
+      <div className="login-center">
       <form className="login-card" onSubmit={submit}>
         <div className="logo" />
         <h2 style={{ marginTop: 0 }}>{t('app.title')}</h2>
@@ -79,6 +81,8 @@ export function Login() {
           Démo : admin@okapi.example / a.boni@okapi.example
         </p>
       </form>
+      </div>
+      <Footer />
     </div>
   );
 }

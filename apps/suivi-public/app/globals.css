@@ -122,7 +122,8 @@ form.search input:focus-visible {
   outline-offset: 1px;
 }
 
-button.primary {
+button.primary,
+a.primary {
   padding: 12px 18px;
   font-size: 16px;
   font-weight: 600;
@@ -131,6 +132,12 @@ button.primary {
   border: 0;
   border-radius: 10px;
   cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+}
+
+a.primary:hover {
+  background: color-mix(in srgb, var(--orange) 88%, black);
 }
 
 .hint {
@@ -244,10 +251,24 @@ button.primary {
 
 footer {
   border-top: 1px solid var(--line);
-  padding: 16px 20px;
+  padding: 18px 20px 22px;
   text-align: center;
   font-size: 12px;
   color: var(--mute);
+}
+
+footer p {
+  margin: 0 0 6px;
+}
+
+footer p:last-child {
+  margin-bottom: 0;
+}
+
+footer .copyright {
+  font-size: 11px;
+  color: var(--mute);
+  opacity: 0.85;
 }
 
 @media (prefers-color-scheme: dark) {

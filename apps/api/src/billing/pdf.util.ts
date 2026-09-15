@@ -5,6 +5,10 @@ const NAVY = rgb(0x17 / 255, 0x06 / 255, 0x55 / 255);
 const INK = rgb(0.15, 0.15, 0.18);
 const MUTE = rgb(0.42, 0.42, 0.46);
 
+function copyrightLine(): string {
+  return `(C) ${new Date().getFullYear()} Okapi Group. Tous droits reserves.`;
+}
+
 export interface LabelData {
   trackingNumber: string;
   originCode: string;
@@ -68,6 +72,7 @@ export async function renderLabelPdf(d: LabelData): Promise<Uint8Array> {
 
   page.drawText('Suivi :', { x: 18, y: 60, size: 8, font: bold, color: MUTE });
   page.drawText(d.trackingUrl, { x: 18, y: 48, size: 7, font, color: NAVY });
+  page.drawText(copyrightLine(), { x: 18, y: 20, size: 6, font, color: MUTE });
 
   return doc.save();
 }
@@ -102,8 +107,9 @@ export async function renderReceiptPdf(d: ReceiptData): Promise<Uint8Array> {
   }
 
   page.drawLine({ start: { x: 32, y: y - 4 }, end: { x: 388, y: y - 4 }, thickness: 0.75, color: MUTE });
-  page.drawText(d.legalMentions, { x: 32, y: 44, size: 7, font, color: MUTE, maxWidth: 356, lineHeight: 9 });
-  page.drawText(d.slogan, { x: 32, y: 24, size: 8, font: bold, color: NAVY });
+  page.drawText(d.legalMentions, { x: 32, y: 50, size: 7, font, color: MUTE, maxWidth: 356, lineHeight: 9 });
+  page.drawText(d.slogan, { x: 32, y: 30, size: 8, font: bold, color: NAVY });
+  page.drawText(copyrightLine(), { x: 32, y: 16, size: 6, font, color: MUTE });
 
   return doc.save();
 }

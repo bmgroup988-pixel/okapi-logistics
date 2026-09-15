@@ -27,7 +27,9 @@ export function App() {
   if (loading) {
     return (
       <div className="login-wrap">
-        <p className="muted">Chargement…</p>
+        <div className="login-center">
+          <p className="muted">Chargement…</p>
+        </div>
       </div>
     );
   }

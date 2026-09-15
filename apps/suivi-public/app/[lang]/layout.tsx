@@ -36,7 +36,15 @@ export default async function LangLayout({
       </header>
       {children}
       <footer>
-        {branding.contactEmail} · {slogan} · <span>{t.legal}</span> · <span>{t.privacy}</span>
+        <p>
+          {branding.contactEmail} · {slogan}
+        </p>
+        <p>
+          <span>{t.legal}</span> · <span>{t.privacy}</span>
+        </p>
+        <p className="copyright">
+          © {new Date().getFullYear()} Okapi Group. {t.rightsReserved}
+        </p>
       </footer>
     </>
   );
