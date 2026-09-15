@@ -101,6 +101,23 @@ export class PartnerSettlementsService {
       });
     }
 
+    const overlapping = await this.prisma.partnerSettlement.findFirst({
+      where: {
+        deliveryPartnerId: input.deliveryPartnerId,
+        status: { in: ['VALIDATED', 'PAID'] },
+        periodStart: { lte: periodEnd },
+        periodEnd: { gte: periodStart },
+      },
+    });
+    if (overlapping) {
+      throw new BadRequestException({
+        error: {
+          code: API_ERROR_CODES.CONFLICT,
+          message: `Période déjà couverte par un règlement ${overlapping.status} (${overlapping.id}) — les colis livrés sur cette période ont déjà été réglés. Utilisez une période distincte ou traitez la correction séparément.`,
+        },
+      });
+    }
+
     const parcels = await this.includedParcels(input.deliveryPartnerId, periodStart, periodEnd);
 
     let totalCollected = '0';
