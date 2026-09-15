@@ -38,6 +38,32 @@ export const envSchema = z.object({
   TRACKING_SEQUENCE_SCOPE: z.enum(['DESTINATION_CITY', 'GLOBAL']).default('DESTINATION_CITY'),
   CONTACT_EMAIL: z.string().default('contact.gokapi@gmail.com'),
   SEED_PASSWORD: z.string().default('OkapiDev!2026'),
+
+  // ------------------------------------------------------- Notifications
+  // Tous optionnels : tant qu'un fournisseur n'est pas configuré (clé
+  // absente), le canal correspondant retombe sur le fournisseur "console"
+  // (journalisation locale, aucun envoi réel) — voir notifications/providers.
+  NOTIFICATIONS_DISPATCH_INTERVAL_MS: z.coerce.number().int().positive().default(15_000),
+  NOTIFICATIONS_DISPATCH_BATCH_SIZE: z.coerce.number().int().positive().default(20),
+  NOTIFICATIONS_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+
+  // Amazon SES v2 (e-mail) — signature AWS SigV4 maison, pas de aws-sdk.
+  SES_REGION: z.string().optional(),
+  SES_ACCESS_KEY: z.string().optional(),
+  SES_SECRET_KEY: z.string().optional(),
+  SES_FROM_EMAIL: z.string().optional(),
+
+  // Meta WhatsApp Business Cloud API.
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+  WHATSAPP_API_VERSION: z.string().default('v21.0'),
+
+  // Passerelle SMS générique (Africa's Talking, Twilio, Vonage, ...) —
+  // interchangeable sans changer le code appelant (NotificationProvider).
+  SMS_GATEWAY_URL: z.string().url().default('https://api.africastalking.com/version1/messaging'),
+  SMS_GATEWAY_USERNAME: z.string().optional(),
+  SMS_GATEWAY_API_KEY: z.string().optional(),
+  SMS_GATEWAY_SENDER_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

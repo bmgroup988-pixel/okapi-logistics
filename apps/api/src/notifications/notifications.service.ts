@@ -6,9 +6,9 @@ import type { Env } from '../config/env.schema';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
- * Notifications — journalisation (EF-NOT-04). L'envoi effectif (Meta WhatsApp
- * Business API, Amazon SES, SMS) est assuré par un worker de file, branché à
- * l'étape 6. Ici on met en file (`status = FILE`).
+ * Notifications — journalisation (EF-NOT-04) et mise en file (`status =
+ * FILE`). L'envoi effectif (Meta WhatsApp Business API, Amazon SES, SMS) est
+ * assuré par `NotificationDispatchService`, qui reprend les lignes `FILE`.
  */
 @Injectable()
 export class NotificationsService {
@@ -71,7 +71,10 @@ export class NotificationsService {
         locale,
         recipient,
         subject: template?.subject ? renderTemplate(template.subject, vars) : null,
-        bodyPreview: body.slice(0, 500),
+        // Seul contenu persisté (pas de colonne "corps complet" séparée) : le
+        // dispatcher l'envoie tel quel. Plafonné large pour ne jamais tronquer
+        // un message réel (SMS/WhatsApp ~ quelques centaines de caractères).
+        bodyPreview: body.slice(0, 4000),
         status: 'FILE',
       },
     });
