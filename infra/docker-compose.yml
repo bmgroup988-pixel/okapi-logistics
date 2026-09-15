@@ -31,7 +31,7 @@ services:
       - okapi-redis:/data
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     container_name: okapi-minio
     command: server /data --console-address ":9001"
     environment:
@@ -44,7 +44,7 @@ services:
       - okapi-minio:/data
 
   createbucket:
-    image: minio/mc:latest
+    image: quay.io/minio/mc:latest
     depends_on:
       - minio
     entrypoint: >

@@ -48,7 +48,7 @@ services:
     # Pas de port publié : jamais exposé hors du réseau Docker interne.
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
