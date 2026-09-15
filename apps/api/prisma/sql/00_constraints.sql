@@ -99,6 +99,7 @@ BEGIN
 
   UPDATE parcels
   SET amount_paid = v_paid,
+      balance = v_due - v_paid,
       payment_status = CASE
         WHEN v_due <= 0 OR v_paid >= v_due THEN 'PAYE'::"PaymentStatus"
         WHEN v_paid > 0 THEN 'PARTIEL'::"PaymentStatus"

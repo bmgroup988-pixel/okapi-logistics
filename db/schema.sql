@@ -592,6 +592,7 @@ BEGIN
 
   UPDATE parcels
   SET amount_paid = GREATEST(v_paid, 0),
+      balance = v_due - GREATEST(v_paid, 0),
       payment_status = CASE
         WHEN v_due <= 0                THEN 'PAYE'
         WHEN GREATEST(v_paid,0) >= v_due THEN 'PAYE'
