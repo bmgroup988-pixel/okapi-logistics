@@ -3,27 +3,32 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { ErrorText, Loading } from '../components/ui';
 
-const COLOR_KEYS = ['brand.navy', 'brand.orange', 'brand.turquoise', 'brand.anthracite'] as const;
-const TEXT_KEYS = [
-  'contact.email',
-  'contact.phone',
-  'contact.whatsapp',
-  'contact.website',
-  'social.facebook',
-  'social.instagram',
-  'social.tiktok',
-  'social.x',
-  'footer.slogan.fr',
-  'footer.slogan.en',
-  'footer.slogan.zh',
-] as const;
+const BRAND_COLOR_KEYS = ['brand.navy', 'brand.orange', 'brand.turquoise', 'brand.anthracite'] as const;
+const UI_COLOR_KEYS = ['brand.bg', 'brand.surface', 'brand.ink', 'brand.mute', 'brand.line'] as const;
+const STATUS_COLOR_KEYS = ['brand.ok', 'brand.warn', 'brand.err'] as const;
+const COLOR_KEYS = [...BRAND_COLOR_KEYS, ...UI_COLOR_KEYS, ...STATUS_COLOR_KEYS] as const;
+
+// Ligne 1 : e-mail + site web. Ligne 2 (dédiée) : téléphone + WhatsApp.
+const CONTACT_ROW_1 = ['contact.email', 'contact.website'] as const;
+const CONTACT_ROW_2 = ['contact.phone', 'contact.whatsapp'] as const;
+const SOCIAL_KEYS = ['social.facebook', 'social.instagram', 'social.tiktok', 'social.x'] as const;
+const SLOGAN_KEYS = ['footer.slogan.fr', 'footer.slogan.en', 'footer.slogan.zh'] as const;
+const TEXT_KEYS = [...CONTACT_ROW_1, ...CONTACT_ROW_2, ...SOCIAL_KEYS, ...SLOGAN_KEYS] as const;
 const KEYS = [...COLOR_KEYS, ...TEXT_KEYS, 'branding.logoUrl'] as const;
 
 const LABELS: Record<string, string> = {
-  'brand.navy': 'Couleur marine',
-  'brand.orange': 'Couleur orange (accent)',
-  'brand.turquoise': 'Couleur turquoise',
-  'brand.anthracite': 'Couleur anthracite (texte)',
+  'brand.navy': 'Marine',
+  'brand.orange': 'Orange (accent)',
+  'brand.turquoise': 'Turquoise',
+  'brand.anthracite': 'Anthracite (texte titres)',
+  'brand.bg': 'Fond de page',
+  'brand.surface': 'Fond des cartes',
+  'brand.ink': 'Texte principal',
+  'brand.mute': 'Texte secondaire',
+  'brand.line': 'Bordures / séparateurs',
+  'brand.ok': 'Succès / payé',
+  'brand.warn': 'Alerte / partiel',
+  'brand.err': 'Erreur / impayé',
   'contact.email': 'E-mail de contact',
   'contact.phone': 'Téléphone',
   'contact.whatsapp': 'WhatsApp (numéro international, ex. +229...)',
@@ -38,6 +43,41 @@ const LABELS: Record<string, string> = {
 };
 
 const MAX_LOGO_BYTES = 400 * 1024;
+
+type Values = Record<string, string>;
+type SetValues = React.Dispatch<React.SetStateAction<Values>>;
+
+function ColorField({ k, values, setValues }: { k: string; values: Values; setValues: SetValues }) {
+  return (
+    <div className="field">
+      <label>{LABELS[k]}</label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input
+          type="color"
+          value={/^#[0-9a-fA-F]{6}$/.test(values[k] ?? '') ? values[k] : '#170655'}
+          onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
+          style={{ width: 44, padding: 2, flex: '0 0 auto' }}
+        />
+        <input value={values[k] ?? ''} onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))} style={{ flex: 1 }} />
+      </div>
+    </div>
+  );
+}
+
+function TextField({ k, values, setValues }: { k: string; values: Values; setValues: SetValues }) {
+  return (
+    <div className="field">
+      <label>{LABELS[k]}</label>
+      <input
+        value={values[k] ?? ''}
+        onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
+        placeholder={
+          k === 'contact.whatsapp' ? '+229XXXXXXXX' : k.startsWith('social.') || k === 'contact.website' ? 'https://…' : undefined
+        }
+      />
+    </div>
+  );
+}
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -148,27 +188,27 @@ export function Branding() {
       </div>
 
       <div className="card">
-        <h3>Couleurs de la marque</h3>
-        <div className="row">
-          {COLOR_KEYS.map((k) => (
-            <div className="field" key={k}>
-              <label>{LABELS[k]}</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  type="color"
-                  value={/^#[0-9a-fA-F]{6}$/.test(values[k] ?? '') ? values[k] : '#170655'}
-                  onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
-                  style={{ width: 44, padding: 2, flex: '0 0 auto' }}
-                />
-                <input
-                  value={values[k] ?? ''}
-                  onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
-                  style={{ flex: 1 }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+        <h3>Couleurs — palette entièrement personnalisable</h3>
+        <p className="muted" style={{ marginTop: -6, fontSize: 12 }}>
+          Chaque couleur ci-dessous s'applique immédiatement, sur le back-office comme sur le site
+          public, sans redéploiement. Restez vigilant sur le contraste texte/fond si vous
+          personnalisez « Fond de page », « Fond des cartes » ou « Texte ».
+        </p>
+
+        <h4 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--mute)', margin: '14px 0 8px' }}>
+          Marque
+        </h4>
+        <div className="row">{BRAND_COLOR_KEYS.map((k) => <ColorField key={k} k={k} values={values} setValues={setValues} />)}</div>
+
+        <h4 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--mute)', margin: '14px 0 8px' }}>
+          Interface
+        </h4>
+        <div className="row">{UI_COLOR_KEYS.map((k) => <ColorField key={k} k={k} values={values} setValues={setValues} />)}</div>
+
+        <h4 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--mute)', margin: '14px 0 8px' }}>
+          Statuts
+        </h4>
+        <div className="row">{STATUS_COLOR_KEYS.map((k) => <ColorField key={k} k={k} values={values} setValues={setValues} />)}</div>
       </div>
 
       <div className="card">
@@ -178,22 +218,22 @@ export function Branding() {
           public et du back-office. Laisser vide pour masquer l'icône.
         </p>
         <div className="grid2">
-          {TEXT_KEYS.map((k) => (
-            <div className="field" key={k}>
-              <label>{LABELS[k]}</label>
-              <input
-                value={values[k] ?? ''}
-                onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
-                placeholder={
-                  k === 'contact.whatsapp'
-                    ? '+229XXXXXXXX'
-                    : k.startsWith('social.') || k === 'contact.website'
-                      ? 'https://…'
-                      : undefined
-                }
-              />
-            </div>
-          ))}
+          {CONTACT_ROW_1.map((k) => <TextField key={k} k={k} values={values} setValues={setValues} />)}
+        </div>
+        <div className="grid2">
+          {CONTACT_ROW_2.map((k) => <TextField key={k} k={k} values={values} setValues={setValues} />)}
+        </div>
+        <h4 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--mute)', margin: '14px 0 8px' }}>
+          Réseaux sociaux
+        </h4>
+        <div className="grid2">
+          {SOCIAL_KEYS.map((k) => <TextField key={k} k={k} values={values} setValues={setValues} />)}
+        </div>
+        <h4 style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--mute)', margin: '14px 0 8px' }}>
+          Slogan
+        </h4>
+        <div className="grid2">
+          {SLOGAN_KEYS.map((k) => <TextField key={k} k={k} values={values} setValues={setValues} />)}
         </div>
         <ErrorText error={save.error} />
         <button className="btn primary" disabled={save.isPending} onClick={() => save.mutate()}>

@@ -27,7 +27,7 @@ export default async function LangLayout({
   const branding = await fetchBranding();
   const slogan = branding.slogans[lang] ?? branding.slogans.fr;
 
-  const brandVars = (['navy', 'orange', 'turquoise', 'anthracite'] as const)
+  const brandVars = (['navy', 'orange', 'turquoise', 'anthracite', 'bg', 'surface', 'ink', 'mute', 'line', 'ok', 'warn', 'err'] as const)
     .filter((k) => HEX.test(branding.brand[k]))
     .map((k) => `--${k}:${branding.brand[k]};`)
     .join('');

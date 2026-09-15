@@ -23,6 +23,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { PricingModule } from './pricing/pricing.module';
 import { PublicTrackingModule } from './public-tracking/public-tracking.module';
 import { ReferenceModule } from './reference/reference.module';
+import { ReportsModule } from './reports/reports.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SequenceModule } from './sequences/sequence.module';
 import { SettingsModule } from './settings/settings.module';
@@ -62,6 +63,7 @@ import { TariffsModule } from './tariffs/tariffs.module';
     PaymentsModule,
     PublicTrackingModule,
     ReferenceModule,
+    ReportsModule,
     HealthModule,
   ],
   providers: [

@@ -8,8 +8,23 @@ export interface PublicTracking {
   steps: Array<{ status: string; locationLabel: string | null; at: string }>;
 }
 
+export interface BrandColors {
+  navy: string;
+  orange: string;
+  turquoise: string;
+  anthracite: string;
+  bg: string;
+  surface: string;
+  ink: string;
+  mute: string;
+  line: string;
+  ok: string;
+  warn: string;
+  err: string;
+}
+
 export interface Branding {
-  brand: { navy: string; orange: string; turquoise: string; anthracite: string };
+  brand: BrandColors;
   logoUrl: string | null;
   contactEmail: string;
   contactPhone: string | null;
@@ -47,7 +62,20 @@ export async function fetchTracking(trackingNumberRaw: string): Promise<Tracking
 
 export async function fetchBranding(): Promise<Branding> {
   const fallback: Branding = {
-    brand: { navy: '#170655', orange: '#E47911', turquoise: '#1CA9C9', anthracite: '#2E3138' },
+    brand: {
+      navy: '#170655',
+      orange: '#E47911',
+      turquoise: '#1CA9C9',
+      anthracite: '#2E3138',
+      bg: '#F5F5F7',
+      surface: '#FFFFFF',
+      ink: '#23222C',
+      mute: '#6A6976',
+      line: '#E2E2E8',
+      ok: '#1F9D57',
+      warn: '#C07700',
+      err: '#C0392B',
+    },
     logoUrl: null,
     contactEmail: 'contact.gokapi@gmail.com',
     contactPhone: null,

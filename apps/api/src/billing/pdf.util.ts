@@ -1,9 +1,23 @@
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb, type RGB } from 'pdf-lib';
 import QRCode from 'qrcode';
 
-const NAVY = rgb(0x17 / 255, 0x06 / 255, 0x55 / 255);
+const DEFAULT_NAVY = rgb(0x17 / 255, 0x06 / 255, 0x55 / 255);
+const DEFAULT_ORANGE = rgb(0xe4 / 255, 0x79 / 255, 0x11 / 255);
 const INK = rgb(0.15, 0.15, 0.18);
 const MUTE = rgb(0.42, 0.42, 0.46);
+
+/** Couleurs de marque configurables (identité visuelle, W-SAD-03) — voir SettingsService.branding(). */
+export interface PdfBrandColors {
+  navy?: string;
+  orange?: string;
+}
+
+function hexToRgb(hex: string | undefined, fallback: RGB): RGB {
+  const m = /^#([0-9a-fA-F]{6})$/.exec(hex ?? '');
+  if (!m) return fallback;
+  const n = parseInt(m[1]!, 16);
+  return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+}
 
 function copyrightLine(): string {
   return `(C) ${new Date().getFullYear()} Global Okapi Group. Tous droits reserves.`;
@@ -21,6 +35,7 @@ export interface LabelData {
   recipientName: string;
   recipientPhone: string | null;
   trackingUrl: string;
+  colors?: PdfBrandColors;
 }
 
 export interface ReceiptLine {
@@ -39,10 +54,12 @@ export interface ReceiptData {
   lines: ReceiptLine[];
   legalMentions: string;
   slogan: string;
+  colors?: PdfBrandColors;
 }
 
 /** Étiquette colis 100 × 150 mm (≈ 283 × 425 pt) — EF-ENR-10. */
 export async function renderLabelPdf(d: LabelData): Promise<Uint8Array> {
+  const NAVY = hexToRgb(d.colors?.navy, DEFAULT_NAVY);
   const doc = await PDFDocument.create();
   const page = doc.addPage([283, 425]);
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -79,6 +96,8 @@ export async function renderLabelPdf(d: LabelData): Promise<Uint8Array> {
 
 /** Reçu / facture / avoir A5 (≈ 420 × 595 pt) — EF-PAY-07 / RG-09. */
 export async function renderReceiptPdf(d: ReceiptData): Promise<Uint8Array> {
+  const NAVY = hexToRgb(d.colors?.navy, DEFAULT_NAVY);
+  const ORANGE = hexToRgb(d.colors?.orange, DEFAULT_ORANGE);
   const doc = await PDFDocument.create();
   const page = doc.addPage([420, 595]);
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -108,7 +127,7 @@ export async function renderReceiptPdf(d: ReceiptData): Promise<Uint8Array> {
 
   page.drawLine({ start: { x: 32, y: y - 4 }, end: { x: 388, y: y - 4 }, thickness: 0.75, color: MUTE });
   page.drawText(d.legalMentions, { x: 32, y: 50, size: 7, font, color: MUTE, maxWidth: 356, lineHeight: 9 });
-  page.drawText(d.slogan, { x: 32, y: 30, size: 8, font: bold, color: NAVY });
+  page.drawText(d.slogan, { x: 32, y: 30, size: 8, font: bold, color: ORANGE });
   page.drawText(copyrightLine(), { x: 32, y: 16, size: 6, font, color: MUTE });
 
   return doc.save();

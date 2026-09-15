@@ -7,8 +7,9 @@ import type { Env } from '../config/env.schema';
 import { FxService } from '../fx/fx.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SequenceService } from '../sequences/sequence.service';
+import { SettingsService } from '../settings/settings.service';
 import { StorageService } from '../storage/storage.service';
-import { renderLabelPdf, renderReceiptPdf } from './pdf.util';
+import { renderLabelPdf, renderReceiptPdf, type PdfBrandColors } from './pdf.util';
 
 /**
  * Facturation — reçus, factures, avoirs (EF-PAY-07/08, RG-09).
@@ -24,10 +25,17 @@ export class BillingService {
     private readonly storage: StorageService,
     private readonly fx: FxService,
     private readonly config: ConfigService<Env, true>,
+    private readonly settings: SettingsService,
   ) {}
 
   private get contactEmail(): string {
     return this.config.get('CONTACT_EMAIL', { infer: true });
+  }
+
+  /** Couleurs de marque configurées (identité visuelle, W-SAD-03) — appliquées aux PDF générés. */
+  private async brandColors(): Promise<PdfBrandColors> {
+    const b = await this.settings.branding();
+    return { navy: String(b.brand.navy), orange: String(b.brand.orange) };
   }
 
   private async pieceNumber(type: DocumentType, iso2: string, at: Date): Promise<string> {
@@ -74,6 +82,7 @@ export class BillingService {
     const sender = p.contacts.find((c) => c.role === 'SENDER');
     const recipient = p.contacts.find((c) => c.role === 'RECIPIENT');
     const trackingBase = this.config.get('PUBLIC_TRACKING_BASE_URL', { infer: true });
+    const colors = await this.brandColors();
 
     // Étiquette
     const label = await renderLabelPdf({
@@ -88,6 +97,7 @@ export class BillingService {
       recipientName: recipient?.name ?? '',
       recipientPhone: recipient?.phone ?? null,
       trackingUrl: `${trackingBase}/${p.clientLocale}/suivi/${p.trackingNumber}`,
+      colors,
     });
     await this.storePdf(parcelId, 'LABEL', null, label);
 
@@ -111,6 +121,7 @@ export class BillingService {
       ],
       legalMentions: this.legalMentions(iso2, p.registrationAgency.country.taxRate.toString()),
       slogan: 'Le futur du commerce africain',
+      colors,
     });
     await this.prisma.invoice.create({
       data: {
@@ -141,6 +152,7 @@ export class BillingService {
     const iso2 = parcel.registrationAgency.country.iso2;
     const dp = currencyDecimals(parcel.billingCurrency);
     const number = await this.pieceNumber('PAYMENT_RECEIPT', iso2, new Date());
+    const colors = await this.brandColors();
 
     const receipt = await renderReceiptPdf({
       title: 'RECU DE PAIEMENT',
@@ -168,6 +180,7 @@ export class BillingService {
       ],
       legalMentions: this.legalMentions(iso2, parcel.registrationAgency.country.taxRate.toString()),
       slogan: 'Le futur du commerce africain',
+      colors,
     });
 
     await this.prisma.invoice.create({
@@ -209,6 +222,7 @@ export class BillingService {
     const tax = dRound(dMul(net, taxRate), dp); // TVA 0 par défaut (D13)
     const gross = dRound(dAdd(net, tax), dp);
     const number = await this.pieceNumber('INVOICE', iso2, new Date());
+    const colors = await this.brandColors();
 
     const pdf = await renderReceiptPdf({
       title: 'FACTURE',
@@ -228,6 +242,7 @@ export class BillingService {
       ],
       legalMentions: this.legalMentions(iso2, taxRate),
       slogan: 'Le futur du commerce africain',
+      colors,
     });
 
     const inv = await this.prisma.invoice.create({
@@ -257,6 +272,7 @@ export class BillingService {
     const parcel = pay.parcel;
     const iso2 = parcel.registrationAgency.country.iso2;
     const number = await this.pieceNumber('CREDIT_NOTE', iso2, new Date());
+    const colors = await this.brandColors();
     const pdf = await renderReceiptPdf({
       title: 'AVOIR',
       number,
@@ -272,6 +288,7 @@ export class BillingService {
       ],
       legalMentions: this.legalMentions(iso2, parcel.registrationAgency.country.taxRate.toString()),
       slogan: 'Le futur du commerce africain',
+      colors,
     });
     const inv = await this.prisma.invoice.create({
       data: {

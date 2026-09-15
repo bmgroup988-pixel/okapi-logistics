@@ -2,8 +2,23 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
 
+export interface BrandColors {
+  navy: string;
+  orange: string;
+  turquoise: string;
+  anthracite: string;
+  bg: string;
+  surface: string;
+  ink: string;
+  mute: string;
+  line: string;
+  ok: string;
+  warn: string;
+  err: string;
+}
+
 export interface BrandingDto {
-  brand: { navy: string; orange: string; turquoise: string; anthracite: string };
+  brand: BrandColors;
   logoUrl: string | null;
   contactEmail: string;
   contactPhone: string | null;
@@ -23,22 +38,30 @@ export function useBranding() {
 }
 
 const HEX = /^#[0-9a-fA-F]{3,8}$/;
-const CSS_VARS: Record<string, string> = {
+const CSS_VARS: Record<keyof BrandColors, string> = {
   navy: '--navy',
   orange: '--orange',
   turquoise: '--turquoise',
   anthracite: '--anthracite',
+  bg: '--bg',
+  surface: '--surface',
+  ink: '--ink',
+  mute: '--mute',
+  line: '--line',
+  ok: '--ok',
+  warn: '--warn',
+  err: '--err',
 };
 
-/** Applique les couleurs de marque configurées comme variables CSS (EF-CFG-01). */
+/** Applique toutes les couleurs configurées comme variables CSS (EF-CFG-01) — palette entièrement personnalisable. */
 export function useApplyBrandColors() {
   const { data } = useBranding();
   useEffect(() => {
     if (!data?.brand) return;
-    for (const [key, cssVar] of Object.entries(CSS_VARS)) {
-      const value = data.brand[key as keyof typeof data.brand];
+    for (const key of Object.keys(CSS_VARS) as Array<keyof BrandColors>) {
+      const value = data.brand[key];
       if (value && HEX.test(value)) {
-        document.documentElement.style.setProperty(cssVar, value);
+        document.documentElement.style.setProperty(CSS_VARS[key], value);
       }
     }
   }, [data]);
