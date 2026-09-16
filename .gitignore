@@ -5,6 +5,8 @@ node_modules/
 
 # Build / sortie
 dist/
+apps/api/prisma/apply-sql.js
+apps/api/prisma/apply-sql.js.map
 build/
 .next/
 out/
