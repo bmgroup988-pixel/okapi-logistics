@@ -25,4 +25,4 @@ COPY apps/back-office/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /repo/apps/back-office/dist /usr/share/nginx/html
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD \
-  wget -qO- http://localhost/ >/dev/null || exit 1
+  wget -qO- http://127.0.0.1/ >/dev/null || exit 1
