@@ -10,6 +10,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "db:constraints": "node prisma/apply-sql.js",
     "db:constraints:dev": "ts-node prisma/apply-sql.ts",
+    "db:seed:prod": "node prisma/seed.js",
+    "admin:create": "node prisma/create-admin.js",
     "seed": "ts-node prisma/seed.ts",
     "start:dev": "node --watch --watch-preserve-output -r ts-node/register -r tsconfig-paths/register src/main.ts",
     "start": "node dist/main.js",

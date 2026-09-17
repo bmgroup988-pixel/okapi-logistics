@@ -5,5 +5,5 @@
     "outDir": ".",
     "noEmit": false
   },
-  "include": ["apply-sql.ts"]
+  "include": ["apply-sql.ts", "seed.ts", "create-admin.ts"]
 }

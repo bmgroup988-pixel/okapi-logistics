@@ -514,6 +514,10 @@ async function main() {
   await seedContent();
   await seedNotificationTemplates();
   await seedRetentionPolicies();
+  if (process.env.SEED_SKIP_DEMO_USERS === 'true') {
+    console.log('Seed terminé (comptes de démonstration ignorés — SEED_SKIP_DEMO_USERS=true).');
+    return;
+  }
   await seedUsers();
   console.log('Seed terminé.');
   console.log('  Super-admin : admin@okapi.example');

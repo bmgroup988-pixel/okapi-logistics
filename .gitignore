@@ -7,6 +7,10 @@ node_modules/
 dist/
 apps/api/prisma/apply-sql.js
 apps/api/prisma/apply-sql.js.map
+apps/api/prisma/seed.js
+apps/api/prisma/seed.js.map
+apps/api/prisma/create-admin.js
+apps/api/prisma/create-admin.js.map
 build/
 .next/
 out/
