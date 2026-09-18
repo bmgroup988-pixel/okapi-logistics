@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { LOCALES, setLocale, useT, type Locale } from '../lib/i18n';
 import { useApplyBrandColors, useBranding } from '../lib/branding';
@@ -8,7 +9,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const { me, logout, can, isSupplierOnly } = useAuth();
   const { t, locale } = useT();
   const { data: branding } = useBranding();
+  const location = useLocation();
+  const [navOpen, setNavOpen] = useState(false);
   useApplyBrandColors();
+
+  // Ferme le menu mobile automatiquement à chaque changement de page.
+  useEffect(() => setNavOpen(false), [location.pathname]);
 
   const item = (to: string, label: string) => (
     <NavLink to={to} className={({ isActive }) => (isActive ? 'active' : '')} end={to === '/'}>
@@ -19,6 +25,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
       <header className="topbar">
+        <button
+          className="nav-toggle"
+          aria-label="Menu"
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen((v) => !v)}
+        >
+          ☰
+        </button>
         {branding?.logoUrl ? <img src={branding.logoUrl} alt="Logo" className="brand-logo" /> : null}
         <span className={branding?.logoUrl ? 'brand no-dot' : 'brand'}>Okapi Logistics</span>
         <span className="spacer" />
@@ -41,7 +55,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </button>
       </header>
 
-      <nav className="sidenav">
+      {navOpen && <div className="nav-backdrop" onClick={() => setNavOpen(false)} />}
+      <nav className={navOpen ? 'sidenav open' : 'sidenav'}>
         {isSupplierOnly ? item('/supplier-portal', t('nav.supplierPortal')) : item('/', t('nav.dashboard'))}
         {can('parcel:create') && item('/parcels/new', t('nav.new'))}
         {can('parcel:read') && item('/parcels', t('nav.parcels'))}

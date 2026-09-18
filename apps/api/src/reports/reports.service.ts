@@ -11,6 +11,8 @@ export interface FinancialStatusQuery {
   periodEnd?: string;
   /** Filtre sur une, plusieurs ou toutes les agences (vide/absent = toutes, dans le périmètre du compte). */
   agencyIds?: string[];
+  /** Filtre sur un, plusieurs ou tous les pays (vide/absent = tous, dans le périmètre du compte). */
+  countryIds?: string[];
   /** Devise d'affichage des montants agrégés — défaut : devise de référence (USD). */
   displayCurrency?: string;
 }
@@ -65,15 +67,18 @@ export class ReportsService {
         : {};
 
     const agencyFilter = query.agencyIds?.length ? { in: query.agencyIds } : undefined;
+    const countryFilter = query.countryIds?.length ? { in: query.countryIds } : undefined;
     const parcelWhere = {
       ...parcelScopeWhere(user),
       ...dateFilter,
       ...(agencyFilter ? { registrationAgencyId: agencyFilter } : {}),
+      ...(countryFilter ? { countryId: countryFilter } : {}),
     };
     const paymentWhere = {
       ...paymentScopeWhere(user),
       ...dateFilter,
       ...(agencyFilter ? { agencyId: agencyFilter } : {}),
+      ...(countryFilter ? { countryId: countryFilter } : {}),
     };
 
     const [statusCounts, billedByAgency, paymentsByAgency, agencies] = await Promise.all([

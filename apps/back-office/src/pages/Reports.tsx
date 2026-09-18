@@ -1,12 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import type { Paginated, ParcelSummary } from '../lib/types';
 import { CityLabel, Loading, Pill, paymentKind } from '../components/ui';
+import { MultiSelectDropdown } from '../components/MultiSelectDropdown';
 
 interface AgencyOption {
   id: string;
   code: string;
+  name: string;
+}
+
+interface CountryOption {
+  id: string;
+  iso2: string;
   name: string;
 }
 
@@ -61,11 +68,16 @@ export function Reports() {
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
   const [agencyIds, setAgencyIds] = useState<string[]>([]);
+  const [countryIds, setCountryIds] = useState<string[]>([]);
   const [selectedCurrency, setSelectedCurrency] = useState('');
 
   const agencies = useQuery({
     queryKey: ['reference-agencies'],
     queryFn: () => api<AgencyOption[]>('/reference/agencies'),
+  });
+  const countries = useQuery({
+    queryKey: ['reference-countries'],
+    queryFn: () => api<CountryOption[]>('/reference/countries'),
   });
   const currencies = useQuery({
     queryKey: ['ref-currencies'],
@@ -73,25 +85,18 @@ export function Reports() {
   });
 
   const financial = useQuery({
-    queryKey: ['reports-financial-status', periodStart, periodEnd, agencyIds, selectedCurrency],
+    queryKey: ['reports-financial-status', periodStart, periodEnd, agencyIds, countryIds, selectedCurrency],
     queryFn: () =>
       api<FinancialStatus>('/admin/reports/financial-status', {
         query: {
           periodStart: periodStart || undefined,
           periodEnd: periodEnd || undefined,
           agencyIds: agencyIds.length ? agencyIds.join(',') : undefined,
+          countryIds: countryIds.length ? countryIds.join(',') : undefined,
           currency: selectedCurrency || undefined,
         },
       }),
   });
-
-  const agencySelectionLabel = useMemo(() => {
-    if (agencyIds.length === 0) return 'Toutes les agences';
-    if (agencyIds.length === 1) {
-      return agencies.data?.find((a) => a.id === agencyIds[0])?.name ?? '1 agence';
-    }
-    return `${agencyIds.length} agences sélectionnées`;
-  }, [agencyIds, agencies.data]);
 
   const unpaid = useQuery({
     queryKey: ['report-unpaid'],
@@ -119,27 +124,20 @@ export function Reports() {
             <label>Jusqu'au</label>
             <input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
           </div>
-          <div className="field">
-            <label>Agence(s) — {agencySelectionLabel}</label>
-            <select
-              multiple
-              size={4}
-              value={agencyIds}
-              onChange={(e) => setAgencyIds([...e.target.selectedOptions].map((o) => o.value))}
-              style={{ minWidth: 220 }}
-            >
-              {(agencies.data ?? []).map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.code} — {a.name}
-                </option>
-              ))}
-            </select>
-            {agencyIds.length > 0 && (
-              <button type="button" className="btn ghost" style={{ marginTop: 4 }} onClick={() => setAgencyIds([])}>
-                Toutes les agences
-              </button>
-            )}
-          </div>
+          <MultiSelectDropdown
+            label="Pays"
+            allLabel="Tous les pays"
+            options={(countries.data ?? []).map((c) => ({ value: c.id, label: `${c.iso2} — ${c.name}` }))}
+            selected={countryIds}
+            onChange={setCountryIds}
+          />
+          <MultiSelectDropdown
+            label="Agence(s)"
+            allLabel="Toutes les agences"
+            options={(agencies.data ?? []).map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` }))}
+            selected={agencyIds}
+            onChange={setAgencyIds}
+          />
           <div className="field">
             <label>Devise d'affichage</label>
             <select value={selectedCurrency} onChange={(e) => setSelectedCurrency(e.target.value)}>
@@ -155,8 +153,8 @@ export function Reports() {
           </div>
         </div>
         <p className="muted" style={{ fontSize: 12, marginTop: -8 }}>
-          Ctrl/Cmd + clic pour sélectionner plusieurs agences. Les montants sont toujours agrégés en
-          devise de référence puis convertis au taux du jour vers la devise choisie.
+          Les montants sont toujours agrégés en devise de référence puis convertis au taux du jour vers
+          la devise choisie.
         </p>
 
         {financial.isLoading ? (

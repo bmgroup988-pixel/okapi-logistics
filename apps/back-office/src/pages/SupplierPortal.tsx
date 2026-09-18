@@ -148,11 +148,12 @@ function ShipmentDetailModal({ id, onClose }: { id: string; onClose: () => void 
 
           {isOpen && (
             <form
+              className="grid2"
               onSubmit={(e) => {
                 e.preventDefault();
                 addParcel.mutate();
               }}
-              style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr', marginBottom: 8 }}
+              style={{ gap: 8, marginBottom: 8 }}
             >
               <input
                 placeholder="Nom du client"
@@ -250,7 +251,7 @@ export function SupplierPortal() {
     <div>
       <h1>{t('nav.supplierPortal')}</h1>
 
-      <div className="tabs" style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+      <div className="tabs" style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button className={tab === 'shipments' ? 'btn primary' : 'btn ghost'} onClick={() => setTab('shipments')}>
           Mes expéditions
         </button>

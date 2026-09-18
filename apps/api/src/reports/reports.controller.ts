@@ -14,6 +14,7 @@ export class ReportsController {
     @Query('periodStart') periodStart: string | undefined,
     @Query('periodEnd') periodEnd: string | undefined,
     @Query('agencyIds') agencyIds: string | undefined,
+    @Query('countryIds') countryIds: string | undefined,
     @Query('currency') currency: string | undefined,
     @CurrentUser() user: CurrentUserType,
   ) {
@@ -22,6 +23,7 @@ export class ReportsController {
         periodStart,
         periodEnd,
         agencyIds: agencyIds ? agencyIds.split(',').filter(Boolean) : undefined,
+        countryIds: countryIds ? countryIds.split(',').filter(Boolean) : undefined,
         displayCurrency: currency,
       },
       user,

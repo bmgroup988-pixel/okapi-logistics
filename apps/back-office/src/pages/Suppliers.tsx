@@ -172,7 +172,7 @@ export function Suppliers() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <h1 style={{ margin: 0 }}>Fournisseurs</h1>
         <span className="spacer" />
         <button className="btn primary" onClick={() => setShowCreate(true)}>
