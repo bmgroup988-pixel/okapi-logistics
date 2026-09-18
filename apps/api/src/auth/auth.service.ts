@@ -267,6 +267,28 @@ export class AuthService {
     };
   }
 
+  /** Changement de mot de passe par l'utilisateur lui-même — exige l'actuel. */
+  async changePassword(user: CurrentUser, currentPassword: string, newPassword: string): Promise<void> {
+    const row = await this.prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    const ok = await this.passwords.verify(row.passwordHash, currentPassword);
+    if (!ok) {
+      throw new UnauthorizedException({
+        error: { code: 'UNAUTHENTICATED', message: 'Mot de passe actuel incorrect' },
+      });
+    }
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await this.passwords.hash(newPassword) },
+    });
+    await this.audit.record({
+      action: 'UPDATE',
+      entityType: 'user',
+      entityId: user.id,
+      actorUserId: user.id,
+      after: { passwordChanged: true },
+    });
+  }
+
   /* ---------------------------------------------------------------- MFA / TOTP */
   async mfaEnroll(user: CurrentUser): Promise<{ secret: string; otpauthUri: string }> {
     const secret = generateBase32Secret();

@@ -3,6 +3,7 @@ import { paginate } from '../common/api-response';
 import { AuditService } from '../audit/audit.service';
 import { PasswordService } from '../auth/password.service';
 import type { CurrentUser } from '../auth/current-user';
+import { randomTokenB64Url } from '../common/crypto.util';
 import { PrismaService } from '../prisma/prisma.service';
 import type { RoleAssignInput, UserCreateInput, UserUpdateInput } from './iam.schemas';
 
@@ -165,6 +166,35 @@ export class IamService {
       requestId,
       before: { userId, roleId: grant.roleId },
     });
+  }
+
+  /**
+   * Réinitialise le mot de passe d'un utilisateur en oubli/perte — génère un
+   * mot de passe temporaire, retourné une seule fois à l'admin pour
+   * transmission par un canal sûr (même pattern que l'activation du portail
+   * fournisseur, docs/11 §6.1).
+   */
+  async resetPassword(
+    userId: string,
+    actor: CurrentUser,
+    requestId?: string | null,
+  ): Promise<{ temporaryPassword: string }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException({ error: { code: 'NOT_FOUND', message: 'Utilisateur introuvable' } });
+    const temporaryPassword = randomTokenB64Url(18);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await this.passwords.hash(temporaryPassword) },
+    });
+    await this.audit.record({
+      action: 'UPDATE',
+      entityType: 'user',
+      entityId: userId,
+      actorUserId: actor.id,
+      requestId,
+      after: { passwordReset: true },
+    });
+    return { temporaryPassword };
   }
 
   async resetMfa(userId: string, actor: CurrentUser, requestId?: string | null) {

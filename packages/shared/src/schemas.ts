@@ -53,6 +53,12 @@ export const parcelCreateSchema = z.object({
   originCityId: uuid,
   destinationCityId: uuid,
   /**
+   * Agence d'enregistrement explicite — requise pour un compte sans agence
+   * unique par défaut (ex. DAF national, secours en cas d'indisponibilité
+   * des agents). Ignorée si le compte a déjà une agence unique.
+   */
+  registrationAgencyId: uuid.optional().nullable(),
+  /**
    * Partenaire de livraison choisi pour une destination `PARTNER` — addendum
    * 08, §1.4. Optionnel : à défaut, le partenaire `isPreferred` actif de la
    * ville est retenu automatiquement ; requis explicitement s'il en existe
@@ -159,6 +165,12 @@ export const loginSchema = z.object({
 export const refreshSchema = z.object({
   refreshToken: z.string().min(1),
 });
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(10).max(200),
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 export const manualRateSchema = z.object({
   baseCurrency: currencyCode,

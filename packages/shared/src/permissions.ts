@@ -65,6 +65,10 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
     'config:read',
   ],
   ADMIN_DAF: [
+    // Secours : le DAF peut enregistrer un colis si les agents sont
+    // indisponibles ou en cas de bug bloquant côté agent (demande produit).
+    'parcel:create',
+    'parcel:photo:write',
     'parcel:read',
     'parcel:transition',
     'parcel:arrival:confirm',

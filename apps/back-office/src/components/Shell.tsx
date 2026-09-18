@@ -33,7 +33,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </option>
           ))}
         </select>
-        <span title={me?.email}>{me?.fullName}</span>
+        <NavLink to="/profile" title={me?.email} style={{ color: '#eae7ff', textDecoration: 'none' }}>
+          {me?.fullName}
+        </NavLink>
         <button className="btn ghost" style={{ color: '#eae7ff' }} onClick={() => void logout()}>
           {t('auth.logout')}
         </button>

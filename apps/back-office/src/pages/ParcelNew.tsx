@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api, uuid } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import { useT } from '../lib/i18n';
 import type { City, ParcelDetail } from '../lib/types';
 import { CityLabel, ErrorText } from '../components/ui';
@@ -54,6 +55,7 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
 
 export function ParcelNew() {
   const { t } = useT();
+  const { me } = useAuth();
   const nav = useNavigate();
   const [step, setStep] = useState(1);
   const [error, setError] = useState<unknown>(null);
@@ -65,6 +67,16 @@ export function ParcelNew() {
     queryKey: ['ref-cities'],
     queryFn: () => api<CityRef[]>('/reference/cities'),
   });
+
+  // Un agent est toujours rattaché à une seule agence (attribuée par un
+  // admin) : pas besoin de choisir. Un DAF national ou super-admin n'en a
+  // aucune par défaut — secours en cas d'indisponibilité des agents,
+  // choix explicite obligatoire.
+  const myAgencyIds = useMemo(
+    () => [...new Set((me?.roles ?? []).map((r) => r.scopeAgencyId).filter((v): v is string => !!v))],
+    [me],
+  );
+  const needsRegistrationAgencyChoice = myAgencyIds.length !== 1;
 
   const [form, setForm] = useState({
     senderName: '',
@@ -83,6 +95,7 @@ export function ParcelNew() {
     clientLocale: 'fr',
     deliveryPartnerId: '',
     destinationAgencyId: '',
+    registrationAgencyId: '',
     consent: false,
   });
   const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
@@ -124,7 +137,7 @@ export function ParcelNew() {
   const agencies = useQuery({
     queryKey: ['ref-agencies'],
     queryFn: () => api<AgencyOption[]>('/reference/agencies'),
-    enabled: isHubDestination,
+    enabled: isHubDestination || needsRegistrationAgencyChoice,
   });
   const agenciesForDestination = useMemo(
     () => (agencies.data ?? []).filter((a) => a.cityId === form.destinationCityId),
@@ -182,6 +195,7 @@ export function ParcelNew() {
           clientLocale: form.clientLocale,
           deliveryPartnerId: form.deliveryPartnerId || undefined,
           destinationAgencyId: form.destinationAgencyId || undefined,
+          registrationAgencyId: form.registrationAgencyId || undefined,
           consent: { given: true, textVersion: 'v1-2026-01' },
         },
       });
@@ -239,7 +253,8 @@ export function ParcelNew() {
     form.contentNature &&
     form.consent &&
     (!needsPartnerChoice || form.deliveryPartnerId) &&
-    (!needsAgencyChoice || form.destinationAgencyId);
+    (!needsAgencyChoice || form.destinationAgencyId) &&
+    (!needsRegistrationAgencyChoice || form.registrationAgencyId);
 
   return (
     <>
@@ -249,6 +264,30 @@ export function ParcelNew() {
 
       {step === 1 && (
         <>
+          {needsRegistrationAgencyChoice && (
+            <div className="card">
+              <h3>Agence d'enregistrement</h3>
+              <p className="muted" style={{ marginTop: 0 }}>
+                Votre compte n'est pas rattaché à une seule agence — choisissez celle où ce colis est
+                physiquement pris en charge (secours agent indisponible, ou compte DAF/super-admin).
+              </p>
+              <div className="field">
+                <label>Agence *</label>
+                <select
+                  value={form.registrationAgencyId}
+                  onChange={(e) => set('registrationAgencyId', e.target.value)}
+                >
+                  <option value="">—</option>
+                  {(agencies.data ?? []).map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.code} — {a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
           <div className="grid2">
             <div className="card">
               <h3>Expéditeur</h3>

@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
-import { loginSchema, refreshSchema, type AuthTokensDto } from '@okapi/shared';
+import { changePasswordSchema, loginSchema, refreshSchema, type AuthTokensDto } from '@okapi/shared';
 import { z } from 'zod';
 import type { Request } from 'express';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -48,6 +48,15 @@ export class AuthController {
     @Body(new ZodValidationPipe(refreshSchema)) body: z.infer<typeof refreshSchema>,
   ): Promise<void> {
     await this.auth.logout(body.refreshToken);
+  }
+
+  @Post('change-password')
+  @HttpCode(204)
+  async changePassword(
+    @CurrentUser() user: CurrentUserType,
+    @Body(new ZodValidationPipe(changePasswordSchema)) body: z.infer<typeof changePasswordSchema>,
+  ): Promise<void> {
+    await this.auth.changePassword(user, body.currentPassword, body.newPassword);
   }
 
   @Post('mfa/enroll')

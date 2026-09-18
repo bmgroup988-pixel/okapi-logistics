@@ -88,20 +88,31 @@ export class ParcelsService {
     user: CurrentUser,
     requestId: string | null,
   ): Promise<Parcel> {
-    const agencyId = defaultAgencyId(user);
+    // Compte mono-agence (agent) : agence imposée, tout choix explicite est
+    // ignoré. Compte sans agence unique (DAF national, super-admin — secours
+    // en cas d'indisponibilité des agents) : choix explicite obligatoire.
+    let agencyId = defaultAgencyId(user);
     if (!agencyId) {
-      throw new BadRequestException({
-        error: {
-          code: API_ERROR_CODES.VALIDATION,
-          message: 'Impossible de déterminer l’agence d’enregistrement pour ce compte',
-        },
-      });
+      if (!input.registrationAgencyId) {
+        throw new BadRequestException({
+          error: {
+            code: API_ERROR_CODES.VALIDATION,
+            message: 'Ce compte n’a pas d’agence unique — préciser registrationAgencyId',
+          },
+        });
+      }
+      agencyId = input.registrationAgencyId;
     }
     if (!canActOnAgency(user, agencyId)) {
       throw new ForbiddenException({ error: { code: API_ERROR_CODES.FORBIDDEN, message: 'Hors périmètre' } });
     }
 
-    const agency = await this.prisma.agency.findUniqueOrThrow({ where: { id: agencyId } });
+    const agency = await this.prisma.agency.findUnique({ where: { id: agencyId } });
+    if (!agency || !agency.isActive) {
+      throw new BadRequestException({
+        error: { code: API_ERROR_CODES.VALIDATION, message: 'Agence d’enregistrement invalide' },
+      });
+    }
     const [origin, destination] = await Promise.all([
       this.prisma.city.findUnique({ where: { id: input.originCityId } }),
       this.prisma.city.findUnique({ where: { id: input.destinationCityId } }),

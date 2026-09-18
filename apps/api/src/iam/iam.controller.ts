@@ -79,6 +79,15 @@ export class IamController {
     await this.iam.revokeRole(id, userRoleId, user, req.requestId);
   }
 
+  @Post(':id/reset-password')
+  resetPassword(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+  ) {
+    return this.iam.resetPassword(id, user, req.requestId);
+  }
+
   @Post(':id/reset-mfa')
   @HttpCode(204)
   async resetMfa(

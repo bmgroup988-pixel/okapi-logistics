@@ -45,6 +45,13 @@ function AssignRoleModal({ u, onClose }: { u: UserRow; onClose: () => void }) {
   const [scopeAgencyId, setScopeAgencyId] = useState('');
   const [scopeCountryId, setScopeCountryId] = useState('');
   const [error, setError] = useState<unknown>(null);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+
+  const resetPassword = useMutation({
+    mutationFn: () => api<{ temporaryPassword: string }>(`/admin/users/${u.id}/reset-password`, { method: 'POST' }),
+    onSuccess: (r) => setTempPassword(r.temporaryPassword),
+    onError: setError,
+  });
 
   const assign = useMutation({
     mutationFn: () =>
@@ -70,6 +77,24 @@ function AssignRoleModal({ u, onClose }: { u: UserRow; onClose: () => void }) {
 
   return (
     <Modal title={`Rôles — ${u.fullName}`} onClose={onClose}>
+      <div className="card" style={{ marginBottom: 16 }}>
+        {tempPassword ? (
+          <>
+            <p>
+              Nouveau mot de passe temporaire — communiquez-le par un canal sûr, il ne sera plus
+              jamais affiché :
+            </p>
+            <p style={{ fontFamily: 'monospace', fontSize: 18, padding: 8, background: 'var(--surface2, #f4f4f7)' }}>
+              {tempPassword}
+            </p>
+          </>
+        ) : (
+          <button className="btn" disabled={resetPassword.isPending} onClick={() => resetPassword.mutate()}>
+            Réinitialiser le mot de passe
+          </button>
+        )}
+      </div>
+
       <table style={{ width: '100%', marginBottom: 16 }}>
         <thead>
           <tr>
