@@ -14,6 +14,8 @@ export interface CurrentUser {
     isGlobal: boolean;
     countryIds: string[];
     agencyIds: string[];
+    /** Fournisseur(s) rattaché(s) — rôle FOURNISSEUR uniquement (docs/11 §5). */
+    supplierIds: string[];
   };
   sessionId: string | null;
 }

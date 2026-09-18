@@ -14,6 +14,8 @@ import { Reports } from './pages/Reports';
 import { Cities } from './pages/Cities';
 import { DeliveryPartners } from './pages/DeliveryPartners';
 import { PartnerSettlements } from './pages/PartnerSettlements';
+import { Suppliers } from './pages/Suppliers';
+import { SupplierPortal } from './pages/SupplierPortal';
 
 function Guard({ perm, children }: { perm?: string; children: React.ReactNode }) {
   const { can } = useAuth();
@@ -22,7 +24,7 @@ function Guard({ perm, children }: { perm?: string; children: React.ReactNode })
 }
 
 export function App() {
-  const { me, loading } = useAuth();
+  const { me, loading, isSupplierOnly } = useAuth();
 
   if (loading) {
     return (
@@ -38,7 +40,12 @@ export function App() {
   return (
     <Shell>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={isSupplierOnly ? <Navigate to="/supplier-portal" replace /> : <Dashboard />} />
+        <Route
+          path="/supplier-portal"
+          element={<Guard perm="shipment:read"><SupplierPortal /></Guard>}
+        />
+        <Route path="/suppliers" element={<Guard perm="supplier:manage"><Suppliers /></Guard>} />
         <Route path="/parcels" element={<Guard perm="parcel:read"><ParcelsList /></Guard>} />
         <Route path="/parcels/new" element={<Guard perm="parcel:create"><ParcelNew /></Guard>} />
         <Route path="/parcels/:id" element={<Guard perm="parcel:read"><ParcelDetail /></Guard>} />

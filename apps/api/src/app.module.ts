@@ -28,6 +28,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { SequenceModule } from './sequences/sequence.module';
 import { SettingsModule } from './settings/settings.module';
 import { StorageModule } from './storage/storage.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { SupplierPortalModule } from './supplier-portal/supplier-portal.module';
 import { TariffsModule } from './tariffs/tariffs.module';
 
 @Module({
@@ -65,6 +67,8 @@ import { TariffsModule } from './tariffs/tariffs.module';
     ReferenceModule,
     ReportsModule,
     HealthModule,
+    SuppliersModule,
+    SupplierPortalModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

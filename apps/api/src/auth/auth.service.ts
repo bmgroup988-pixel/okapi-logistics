@@ -214,10 +214,17 @@ export class AuthService {
     const validRoleCodes = roleCodes.filter((c): c is RoleCode =>
       (ROLE_CODES as readonly string[]).includes(c),
     );
+    // Rôles "non scopés par défaut" (pays/agence) traités comme globaux —
+    // AGENT_FRET et FOURNISSEUR sont toujours explicitement scopés (agence,
+    // resp. fournisseur), jamais globaux par absence de scope (docs/11 §5).
     const isGlobal =
       roleCodes.includes('SUPER_ADMIN') ||
       user.roles.some(
-        (r) => r.role.code !== 'AGENT_FRET' && !r.scopeCountryId && !r.scopeAgencyId,
+        (r) =>
+          r.role.code !== 'AGENT_FRET' &&
+          r.role.code !== 'FOURNISSEUR' &&
+          !r.scopeCountryId &&
+          !r.scopeAgencyId,
       );
 
     return {
@@ -231,6 +238,9 @@ export class AuthService {
         isGlobal,
         countryIds: unique(user.roles.map((r) => r.scopeCountryId).filter(Boolean) as string[]),
         agencyIds: unique(user.roles.map((r) => r.scopeAgencyId).filter(Boolean) as string[]),
+        supplierIds: unique(
+          user.roles.map((r) => r.scopeSupplierId).filter(Boolean) as string[],
+        ),
       },
       sessionId,
     };
@@ -239,7 +249,7 @@ export class AuthService {
   async me(user: CurrentUser): Promise<MeDto> {
     const full = await this.prisma.user.findUniqueOrThrow({
       where: { id: user.id },
-      include: { roles: true },
+      include: { roles: { include: { role: true } } },
     });
     return {
       id: full.id,
@@ -247,9 +257,10 @@ export class AuthService {
       fullName: full.fullName,
       locale: (full.defaultLocale as Locale) ?? 'fr',
       roles: full.roles.map((r) => ({
-        code: user.roleCodes[0] ?? '',
+        code: r.role.code,
         scopeCountryId: r.scopeCountryId,
         scopeAgencyId: r.scopeAgencyId,
+        scopeSupplierId: r.scopeSupplierId,
       })),
       permissions: [...user.permissions],
       mfaEnabled: full.totpEnabled,

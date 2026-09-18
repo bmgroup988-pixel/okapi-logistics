@@ -132,3 +132,98 @@ export async function renderReceiptPdf(d: ReceiptData): Promise<Uint8Array> {
 
   return doc.save();
 }
+
+export interface SupplierInvoiceLineData {
+  trackingNumber: string;
+  recipientName: string;
+  destinationCityLabel: string;
+  weightKg: string;
+  amount: string;
+}
+
+export interface SupplierInvoiceData {
+  number: string;
+  issuedAt: string;
+  supplierName: string;
+  supplierCode: string;
+  shipmentCode: string;
+  currency: string;
+  lines: SupplierInvoiceLineData[];
+  totalAmount: string;
+  legalMentions: string;
+  slogan: string;
+  colors?: PdfBrandColors;
+}
+
+function truncate(s: string, max: number): string {
+  return s.length > max ? s.slice(0, max - 1) + '…' : s;
+}
+
+/**
+ * Facture fournisseur consolidée — une ligne par client final d'une
+ * expédition groupée (docs/11, §2.4/§4/§7). Hauteur de page ajustée au
+ * nombre de lignes (page unique, pas de pagination multi-pages).
+ */
+export async function renderSupplierInvoicePdf(d: SupplierInvoiceData): Promise<Uint8Array> {
+  const NAVY = hexToRgb(d.colors?.navy, DEFAULT_NAVY);
+  const ORANGE = hexToRgb(d.colors?.orange, DEFAULT_ORANGE);
+  const rowHeight = 16;
+  const headerHeight = 150;
+  const footerHeight = 100;
+  const height = Math.max(420, headerHeight + footerHeight + d.lines.length * rowHeight);
+
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([420, height]);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+  let y = height - 40;
+  page.drawText('OKAPI LOGISTICS', { x: 32, y, size: 14, font: bold, color: NAVY });
+  y -= 20;
+  page.drawText(`FACTURE N° ${d.number}`, { x: 32, y, size: 11, font: bold, color: INK });
+  page.drawText(new Date(d.issuedAt).toISOString().replace('T', ' ').slice(0, 16), {
+    x: 300,
+    y,
+    size: 9,
+    font,
+    color: MUTE,
+  });
+  y -= 18;
+  page.drawText(`Fournisseur : ${d.supplierName} (${d.supplierCode})`, { x: 32, y, size: 9, font, color: MUTE });
+  y -= 14;
+  page.drawText(`Expédition : ${d.shipmentCode}`, { x: 32, y, size: 9, font, color: MUTE });
+  y -= 20;
+
+  page.drawLine({ start: { x: 32, y }, end: { x: 388, y }, thickness: 0.75, color: MUTE });
+  y -= 14;
+  page.drawText('Colis', { x: 32, y, size: 8, font: bold, color: MUTE });
+  page.drawText('Client', { x: 100, y, size: 8, font: bold, color: MUTE });
+  page.drawText('Ville', { x: 220, y, size: 8, font: bold, color: MUTE });
+  page.drawText('Poids', { x: 300, y, size: 8, font: bold, color: MUTE });
+  page.drawText('Montant', { x: 340, y, size: 8, font: bold, color: MUTE });
+  y -= 12;
+  page.drawLine({ start: { x: 32, y }, end: { x: 388, y }, thickness: 0.5, color: MUTE });
+  y -= 14;
+
+  for (const l of d.lines) {
+    page.drawText(l.trackingNumber, { x: 32, y, size: 7, font, color: INK });
+    page.drawText(truncate(l.recipientName, 20), { x: 100, y, size: 7, font, color: INK });
+    page.drawText(truncate(l.destinationCityLabel, 16), { x: 220, y, size: 7, font, color: INK });
+    page.drawText(`${l.weightKg}kg`, { x: 300, y, size: 7, font, color: INK });
+    page.drawText(l.amount, { x: 388 - font.widthOfTextAtSize(l.amount, 7), y, size: 7, font, color: INK });
+    y -= rowHeight;
+  }
+
+  y -= 4;
+  page.drawLine({ start: { x: 32, y }, end: { x: 388, y }, thickness: 0.75, color: MUTE });
+  y -= 18;
+  page.drawText('TOTAL', { x: 300, y, size: 10, font: bold, color: INK });
+  const totalStr = `${d.totalAmount} ${d.currency}`;
+  page.drawText(totalStr, { x: 388 - bold.widthOfTextAtSize(totalStr, 11), y, size: 11, font: bold, color: NAVY });
+
+  page.drawText(d.legalMentions, { x: 32, y: 50, size: 7, font, color: MUTE, maxWidth: 356, lineHeight: 9 });
+  page.drawText(d.slogan, { x: 32, y: 30, size: 8, font: bold, color: ORANGE });
+  page.drawText(copyrightLine(), { x: 32, y: 16, size: 6, font, color: MUTE });
+
+  return doc.save();
+}

@@ -151,7 +151,82 @@ export interface MeDto {
     code: string;
     scopeCountryId: string | null;
     scopeAgencyId: string | null;
+    scopeSupplierId: string | null;
   }>;
   permissions: string[];
   mfaEnabled: boolean;
+}
+
+/* ---------------------------- DTO fournisseurs (docs/11) ---------------------------- */
+
+export interface SupplierDto {
+  id: string;
+  code: string; // FRN-XXXXXX
+  name: string;
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  address: string | null;
+  countryId: string;
+  defaultAgencyId: string;
+  billingCurrency: string;
+  portalActivated: boolean;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ShipmentDto {
+  id: string;
+  code: string; // EXP-AAMM-NNNN
+  status: 'OUVERTE' | 'CLOTUREE' | 'ANNULEE';
+  parcelCount: number;
+  totalWeightKg: string;
+  currency: string;
+  totalAmountDue: string;
+  referenceCurrency: string;
+  totalAmountDueReference: string;
+  openedAt: string;
+  closedAt: string | null;
+}
+
+export interface ShipmentParcelDto {
+  id: string;
+  trackingNumber: string;
+  recipientName: string;
+  recipientPhone: string | null;
+  destinationCityCode: string;
+  destinationCityName: string;
+  weightKg: string;
+  amountDue: string;
+  currency: string;
+  createdAt: string;
+}
+
+export interface ShipmentDetailDto extends ShipmentDto {
+  parcels: ShipmentParcelDto[];
+}
+
+export interface SupplierInvoiceDto {
+  id: string;
+  number: string; // FACT-FRN-XXXXXX-AAMM-NNNN
+  shipmentId: string;
+  currency: string;
+  amountGross: string;
+  referenceCurrency: string;
+  amountReference: string;
+  issuedAt: string;
+}
+
+export interface SupplierInvoiceLineDto {
+  trackingNumber: string;
+  recipientName: string;
+  recipientPhone: string | null;
+  destinationCityLabel: string;
+  weightKg: string;
+  amount: string;
+  currency: string;
+}
+
+export interface SupplierInvoiceDetailDto extends SupplierInvoiceDto {
+  lines: SupplierInvoiceLineDto[];
 }

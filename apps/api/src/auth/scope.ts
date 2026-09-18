@@ -30,3 +30,20 @@ export function canActOnAgency(user: CurrentUser, agencyId: string): boolean {
 export function defaultAgencyId(user: CurrentUser): string | null {
   return user.scope.agencyIds.length === 1 ? user.scope.agencyIds[0]! : null;
 }
+
+/**
+ * Périmètre du portail fournisseur (docs/11, §5) : un compte FOURNISSEUR ne
+ * voit jamais que ses propres expéditions/factures, quel que soit l'UUID
+ * deviné — le filtre s'applique au niveau requête, pas seulement contrôleur.
+ */
+export function supplierScopeWhere(user: CurrentUser): Prisma.ShipmentWhereInput {
+  if (user.scope.isGlobal) return {};
+  return user.scope.supplierIds.length
+    ? { supplierId: { in: user.scope.supplierIds } }
+    : { id: '00000000-0000-0000-0000-000000000000' };
+}
+
+/** Identifiant du fournisseur rattaché au compte connecté, s'il n'y en a qu'un. */
+export function currentSupplierId(user: CurrentUser): string | null {
+  return user.scope.supplierIds.length === 1 ? user.scope.supplierIds[0]! : null;
+}

@@ -89,8 +89,12 @@ export type ErasureStatus = (typeof ERASURE_STATUSES)[number];
 export const SETTING_SCOPES = ['GLOBAL', 'COUNTRY', 'AGENCY'] as const;
 export type SettingScope = (typeof SETTING_SCOPES)[number];
 
-export const ROLE_CODES = ['AGENT_FRET', 'ADMIN_DAF', 'SUPER_ADMIN'] as const;
+export const ROLE_CODES = ['AGENT_FRET', 'ADMIN_DAF', 'SUPER_ADMIN', 'FOURNISSEUR'] as const;
 export type RoleCode = (typeof ROLE_CODES)[number];
+
+/** Cycle de vie d'une expédition fournisseur — docs/11, §2.2. */
+export const SHIPMENT_STATUSES = ['OUVERTE', 'CLOTUREE', 'ANNULEE'] as const;
+export type ShipmentStatus = (typeof SHIPMENT_STATUSES)[number];
 
 /**
  * Transitions de statut colis autorisées — RG-07.

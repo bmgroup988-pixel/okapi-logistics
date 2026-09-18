@@ -136,6 +136,13 @@ enum SettingScope {
   AGENCY
 }
 
+/// Cycle de vie d'une expédition fournisseur — docs/11, §2.2.
+enum ShipmentStatus {
+  OUVERTE
+  CLOTUREE
+  ANNULEE
+}
+
 // ============================================ Référentiel & configuration
 model Currency {
   code          String   @id @db.Char(3)
@@ -148,13 +155,14 @@ model Currency {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  countriesDefault    Country[]           @relation("CountryDefaultCurrency")
-  agenciesBilling     Agency[]            @relation("AgencyBillingCurrency")
-  tariffs             Tariff[]
-  ratesBase           ExchangeRate[]      @relation("RateBase")
-  ratesQuote          ExchangeRate[]      @relation("RateQuote")
-  partnerTariffs      PartnerTariff[]
-  partnerSettlements  PartnerSettlement[]
+  countriesDefault   Country[]           @relation("CountryDefaultCurrency")
+  agenciesBilling    Agency[]            @relation("AgencyBillingCurrency")
+  tariffs            Tariff[]
+  ratesBase          ExchangeRate[]      @relation("RateBase")
+  ratesQuote         ExchangeRate[]      @relation("RateQuote")
+  partnerTariffs     PartnerTariff[]
+  partnerSettlements PartnerSettlement[]
+  suppliers          Supplier[]
 
   @@map("currencies")
 }
@@ -174,11 +182,12 @@ model Country {
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt            DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  currency        Currency  @relation("CountryDefaultCurrency", fields: [defaultCurrency], references: [code])
+  currency        Currency   @relation("CountryDefaultCurrency", fields: [defaultCurrency], references: [code])
   cities          City[]
   agencies        Agency[]
   corridorsOrigin Corridor[] @relation("CorridorOrigin")
   corridorsDest   Corridor[] @relation("CorridorDestination")
+  suppliers       Supplier[]
 
   @@map("countries")
 }
@@ -237,6 +246,8 @@ model Agency {
   parcelsAsTransit     Parcel[]   @relation("ParcelTransitAgency")
   payments             Payment[]
   userRoles            UserRole[]
+  suppliers            Supplier[]
+  shipmentsOrigin      Shipment[]
 
   @@index([countryId])
   @@map("agencies")
@@ -260,29 +271,29 @@ model Corridor {
 }
 
 model Tariff {
-  id                String    @id @default(uuid()) @db.Uuid
-  corridorId        String?   @map("corridor_id") @db.Uuid
-  originCityId      String?   @map("origin_city_id") @db.Uuid
-  destinationCityId String?   @map("destination_city_id") @db.Uuid
+  id                String        @id @default(uuid()) @db.Uuid
+  corridorId        String?       @map("corridor_id") @db.Uuid
+  originCityId      String?       @map("origin_city_id") @db.Uuid
+  destinationCityId String?       @map("destination_city_id") @db.Uuid
   mode              TransportMode
-  currency          String    @db.Char(3)
-  fixedFee          Decimal   @default(0) @map("fixed_fee") @db.Decimal(18, 4)
-  pricePerKg        Decimal   @default(0) @map("price_per_kg") @db.Decimal(18, 4)
-  minCharge         Decimal   @default(0) @map("min_charge") @db.Decimal(18, 4)
-  adValoremEnabled  Boolean   @default(false) @map("ad_valorem_enabled")
-  adValoremRate     Decimal   @default(0) @map("ad_valorem_rate") @db.Decimal(6, 4)
-  overrideMin       Decimal   @default(-0.15) @map("override_min") @db.Decimal(6, 4)
-  overrideMax       Decimal   @default(0.15) @map("override_max") @db.Decimal(6, 4)
-  validFrom         DateTime  @default(now()) @map("valid_from") @db.Date
-  validTo           DateTime? @map("valid_to") @db.Date
-  createdById       String?   @map("created_by") @db.Uuid
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  currency          String        @db.Char(3)
+  fixedFee          Decimal       @default(0) @map("fixed_fee") @db.Decimal(18, 4)
+  pricePerKg        Decimal       @default(0) @map("price_per_kg") @db.Decimal(18, 4)
+  minCharge         Decimal       @default(0) @map("min_charge") @db.Decimal(18, 4)
+  adValoremEnabled  Boolean       @default(false) @map("ad_valorem_enabled")
+  adValoremRate     Decimal       @default(0) @map("ad_valorem_rate") @db.Decimal(6, 4)
+  overrideMin       Decimal       @default(-0.15) @map("override_min") @db.Decimal(6, 4)
+  overrideMax       Decimal       @default(0.15) @map("override_max") @db.Decimal(6, 4)
+  validFrom         DateTime      @default(now()) @map("valid_from") @db.Date
+  validTo           DateTime?     @map("valid_to") @db.Date
+  createdById       String?       @map("created_by") @db.Uuid
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  corridor        Corridor?     @relation(fields: [corridorId], references: [id])
-  originCity      City?         @relation("TariffOriginCity", fields: [originCityId], references: [id])
-  destinationCity City?         @relation("TariffDestinationCity", fields: [destinationCityId], references: [id])
-  currencyRef     Currency      @relation(fields: [currency], references: [code])
+  corridor        Corridor? @relation(fields: [corridorId], references: [id])
+  originCity      City?     @relation("TariffOriginCity", fields: [originCityId], references: [id])
+  destinationCity City?     @relation("TariffDestinationCity", fields: [destinationCityId], references: [id])
+  currencyRef     Currency  @relation(fields: [currency], references: [code])
 
   @@index([corridorId])
   @@index([destinationCityId, mode, validFrom])
@@ -309,13 +320,13 @@ model ExchangeRate {
 }
 
 model Setting {
-  id        String       @id @default(uuid()) @db.Uuid
-  scope     SettingScope
-  scopeId   String?      @map("scope_id") @db.Uuid
-  key       String
-  value     Json
-  updatedById String?    @map("updated_by") @db.Uuid
-  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id          String       @id @default(uuid()) @db.Uuid
+  scope       SettingScope
+  scopeId     String?      @map("scope_id") @db.Uuid
+  key         String
+  value       Json
+  updatedById String?      @map("updated_by") @db.Uuid
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([scope, scopeId, key])
   @@map("settings")
@@ -331,12 +342,12 @@ model ContentBlock {
 }
 
 model ContentTranslation {
-  id             String       @id @default(uuid()) @db.Uuid
-  contentBlockId String       @map("content_block_id") @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  contentBlockId String   @map("content_block_id") @db.Uuid
   locale         String
   value          String
-  updatedById    String?      @map("updated_by") @db.Uuid
-  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedById    String?  @map("updated_by") @db.Uuid
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   block ContentBlock @relation(fields: [contentBlockId], references: [id], onDelete: Cascade)
 
@@ -381,14 +392,15 @@ model User {
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(6)
 
-  roles          UserRole[]
-  sessions       UserSession[]
-  resetTokens    PasswordResetToken[]
-  auditLogs      AuditLog[]
-  parcelsCreated Parcel[]        @relation("ParcelRegistrationAgent")
-  photosTaken    ParcelPhoto[]
-  eventsCreated  ParcelEvent[]
-  paymentsTaken  Payment[]       @relation("PaymentCollectedBy")
+  roles           UserRole[]
+  sessions        UserSession[]
+  resetTokens     PasswordResetToken[]
+  auditLogs       AuditLog[]
+  parcelsCreated  Parcel[]             @relation("ParcelRegistrationAgent")
+  photosTaken     ParcelPhoto[]
+  eventsCreated   ParcelEvent[]
+  paymentsTaken   Payment[]            @relation("PaymentCollectedBy")
+  supplierAccount Supplier?
 
   @@map("users")
 }
@@ -407,7 +419,7 @@ model Role {
 
 model Permission {
   code        String @id
-  description  String
+  description String
 
   roles RolePermission[]
 
@@ -426,19 +438,22 @@ model RolePermission {
 }
 
 model UserRole {
-  id             String   @id @default(uuid()) @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
-  roleId         String   @map("role_id") @db.Uuid
-  scopeCountryId String?  @map("scope_country_id") @db.Uuid
-  scopeAgencyId  String?  @map("scope_agency_id") @db.Uuid
-  createdById    String?  @map("created_by") @db.Uuid
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  roleId          String   @map("role_id") @db.Uuid
+  scopeCountryId  String?  @map("scope_country_id") @db.Uuid
+  scopeAgencyId   String?  @map("scope_agency_id") @db.Uuid
+  /// Périmètre du rôle FOURNISSEUR — docs/11, §5. Toujours renseigné pour ce rôle.
+  scopeSupplierId String?  @map("scope_supplier_id") @db.Uuid
+  createdById     String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role   Role    @relation(fields: [roleId], references: [id])
-  agency Agency? @relation(fields: [scopeAgencyId], references: [id])
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     Role      @relation(fields: [roleId], references: [id])
+  agency   Agency?   @relation(fields: [scopeAgencyId], references: [id])
+  supplier Supplier? @relation(fields: [scopeSupplierId], references: [id])
 
-  @@unique([userId, roleId, scopeCountryId, scopeAgencyId])
+  @@unique([userId, roleId, scopeCountryId, scopeAgencyId, scopeSupplierId])
   @@index([userId])
   @@map("user_roles")
 }
@@ -508,69 +523,77 @@ model IdempotencyKey {
 
 // ============================================================ Colis
 model Parcel {
-  id                    String        @id @default(uuid()) @db.Uuid
-  trackingNumber        String        @unique @map("tracking_number")
-  registrationAgencyId  String        @map("registration_agency_id") @db.Uuid
-  registrationAgentId   String        @map("registration_agent_id") @db.Uuid
-  countryId             String        @map("country_id") @db.Uuid
-  originCityId          String        @map("origin_city_id") @db.Uuid
-  destinationCityId     String        @map("destination_city_id") @db.Uuid
-  destinationCityCode   String        @map("destination_city_code") @db.Char(3)
+  id                    String               @id @default(uuid()) @db.Uuid
+  trackingNumber        String               @unique @map("tracking_number")
+  registrationAgencyId  String               @map("registration_agency_id") @db.Uuid
+  registrationAgentId   String               @map("registration_agent_id") @db.Uuid
+  countryId             String               @map("country_id") @db.Uuid
+  originCityId          String               @map("origin_city_id") @db.Uuid
+  destinationCityId     String               @map("destination_city_id") @db.Uuid
+  destinationCityCode   String               @map("destination_city_code") @db.Char(3)
   /// Agence de destination si la ville est un HUB — addendum 08, §3.1.
-  destinationAgencyId   String?       @map("destination_agency_id") @db.Uuid
+  destinationAgencyId   String?              @map("destination_agency_id") @db.Uuid
   /// Agence intermédiaire en cas de transbordement — addendum 08, §3.1.
-  transitAgencyId       String?       @map("transit_agency_id") @db.Uuid
+  transitAgencyId       String?              @map("transit_agency_id") @db.Uuid
   /// Partenaire retenu si la ville est PARTNER — addendum 08, §1.4/§3.1.
-  deliveryPartnerId     String?       @map("delivery_partner_id") @db.Uuid
-  transportMode         TransportMode @map("transport_mode")
-  weightKg              Decimal       @map("weight_kg") @db.Decimal(10, 2)
-  contentNature         String        @map("content_nature")
-  declaredValue         Decimal       @default(0) @map("declared_value") @db.Decimal(18, 4)
-  declaredValueCurrency String        @map("declared_value_currency") @db.Char(3)
-  billingCurrency       String        @map("billing_currency") @db.Char(3)
-  status                ParcelStatus  @default(ENREGISTRE)
-  paymentStatus         PaymentStatus @default(IMPAYE) @map("payment_status")
-  amountDue             Decimal       @map("amount_due") @db.Decimal(18, 4)
-  amountPaid            Decimal       @default(0) @map("amount_paid") @db.Decimal(18, 4)
-  balance               Decimal       @default(0) @db.Decimal(18, 4)
-  referenceCurrency     String        @map("reference_currency") @db.Char(3)
-  amountDueReference    Decimal       @map("amount_due_reference") @db.Decimal(18, 4)
-  fxRateDue             Decimal       @map("fx_rate_due") @db.Decimal(18, 8)
-  exchangeRateIdDue     String?       @map("exchange_rate_id_due") @db.Uuid
-  pricingOverridePct    Decimal       @default(0) @map("pricing_override_pct") @db.Decimal(6, 4)
-  pricingSnapshot       Json          @map("pricing_snapshot")
-  consentGiven          Boolean       @default(false) @map("consent_given")
-  consentTextVersion    String?       @map("consent_text_version")
-  consentAt             DateTime?     @map("consent_at") @db.Timestamptz(6)
+  deliveryPartnerId     String?              @map("delivery_partner_id") @db.Uuid
+  /// Colis d'une expédition fournisseur groupée — docs/11, §2.3. Null pour un
+  /// colis walk-in classique enregistré en agence.
+  supplierId            String?              @map("supplier_id") @db.Uuid
+  shipmentId            String?              @map("shipment_id") @db.Uuid
+  transportMode         TransportMode        @map("transport_mode")
+  weightKg              Decimal              @map("weight_kg") @db.Decimal(10, 2)
+  contentNature         String               @map("content_nature")
+  declaredValue         Decimal              @default(0) @map("declared_value") @db.Decimal(18, 4)
+  declaredValueCurrency String               @map("declared_value_currency") @db.Char(3)
+  billingCurrency       String               @map("billing_currency") @db.Char(3)
+  status                ParcelStatus         @default(ENREGISTRE)
+  paymentStatus         PaymentStatus        @default(IMPAYE) @map("payment_status")
+  amountDue             Decimal              @map("amount_due") @db.Decimal(18, 4)
+  amountPaid            Decimal              @default(0) @map("amount_paid") @db.Decimal(18, 4)
+  balance               Decimal              @default(0) @db.Decimal(18, 4)
+  referenceCurrency     String               @map("reference_currency") @db.Char(3)
+  amountDueReference    Decimal              @map("amount_due_reference") @db.Decimal(18, 4)
+  fxRateDue             Decimal              @map("fx_rate_due") @db.Decimal(18, 8)
+  exchangeRateIdDue     String?              @map("exchange_rate_id_due") @db.Uuid
+  pricingOverridePct    Decimal              @default(0) @map("pricing_override_pct") @db.Decimal(6, 4)
+  pricingSnapshot       Json                 @map("pricing_snapshot")
+  consentGiven          Boolean              @default(false) @map("consent_given")
+  consentTextVersion    String?              @map("consent_text_version")
+  consentAt             DateTime?            @map("consent_at") @db.Timestamptz(6)
   clientChannel         NotificationChannel? @map("client_channel")
-  clientLocale          String        @default("fr") @map("client_locale")
-  cancelReason          String?       @map("cancel_reason")
-  deliveredAt           DateTime?     @map("delivered_at") @db.Timestamptz(6)
-  createdById           String?       @map("created_by") @db.Uuid
-  updatedById           String?       @map("updated_by") @db.Uuid
-  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt             DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  clientLocale          String               @default("fr") @map("client_locale")
+  cancelReason          String?              @map("cancel_reason")
+  deliveredAt           DateTime?            @map("delivered_at") @db.Timestamptz(6)
+  createdById           String?              @map("created_by") @db.Uuid
+  updatedById           String?              @map("updated_by") @db.Uuid
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  registrationAgency Agency          @relation(fields: [registrationAgencyId], references: [id])
-  destinationAgency  Agency?         @relation("ParcelDestinationAgency", fields: [destinationAgencyId], references: [id])
-  transitAgency      Agency?         @relation("ParcelTransitAgency", fields: [transitAgencyId], references: [id])
-  deliveryPartner    DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id])
-  registrationAgent  User            @relation("ParcelRegistrationAgent", fields: [registrationAgentId], references: [id])
-  originCity         City            @relation("ParcelOriginCity", fields: [originCityId], references: [id])
-  destinationCity    City            @relation("ParcelDestinationCity", fields: [destinationCityId], references: [id])
-  contacts           ParcelContact[]
-  photos             ParcelPhoto[]
-  events             ParcelEvent[]
-  payments           Payment[]
-  invoices           Invoice[]
-  documents          DocumentFile[]
-  notifications      Notification[]
+  registrationAgency  Agency               @relation(fields: [registrationAgencyId], references: [id])
+  destinationAgency   Agency?              @relation("ParcelDestinationAgency", fields: [destinationAgencyId], references: [id])
+  transitAgency       Agency?              @relation("ParcelTransitAgency", fields: [transitAgencyId], references: [id])
+  deliveryPartner     DeliveryPartner?     @relation(fields: [deliveryPartnerId], references: [id])
+  supplier            Supplier?            @relation(fields: [supplierId], references: [id])
+  shipment            Shipment?            @relation(fields: [shipmentId], references: [id])
+  registrationAgent   User                 @relation("ParcelRegistrationAgent", fields: [registrationAgentId], references: [id])
+  originCity          City                 @relation("ParcelOriginCity", fields: [originCityId], references: [id])
+  destinationCity     City                 @relation("ParcelDestinationCity", fields: [destinationCityId], references: [id])
+  contacts            ParcelContact[]
+  photos              ParcelPhoto[]
+  events              ParcelEvent[]
+  payments            Payment[]
+  invoices            Invoice[]
+  documents           DocumentFile[]
+  notifications       Notification[]
+  supplierInvoiceLine SupplierInvoiceLine?
 
   @@index([registrationAgencyId, createdAt(sort: Desc)])
   @@index([countryId, status, paymentStatus, createdAt])
   @@index([status, paymentStatus])
   @@index([destinationAgencyId])
   @@index([deliveryPartnerId])
+  @@index([shipmentId])
   @@map("parcels")
 }
 
@@ -623,15 +646,15 @@ model ParcelPhoto {
 }
 
 model ParcelEvent {
-  id               String       @id @default(uuid()) @db.Uuid
-  parcelId         String       @map("parcel_id") @db.Uuid
-  status           ParcelStatus
-  locationCityId   String?      @map("location_city_id") @db.Uuid
-  locationLabel    String?      @map("location_label")
-  note             String?
-  visibleToClient  Boolean      @default(true) @map("visible_to_client")
-  createdById      String?      @map("created_by") @db.Uuid
-  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  id              String       @id @default(uuid()) @db.Uuid
+  parcelId        String       @map("parcel_id") @db.Uuid
+  status          ParcelStatus
+  locationCityId  String?      @map("location_city_id") @db.Uuid
+  locationLabel   String?      @map("location_label")
+  note            String?
+  visibleToClient Boolean      @default(true) @map("visible_to_client")
+  createdById     String?      @map("created_by") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   parcel       Parcel @relation(fields: [parcelId], references: [id])
   createdBy    User?  @relation(fields: [createdById], references: [id])
@@ -706,8 +729,8 @@ model Invoice {
   legalMentionsSnapshot Json         @map("legal_mentions_snapshot")
   createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  parcel   Parcel         @relation(fields: [parcelId], references: [id])
-  payment  Payment?       @relation(fields: [paymentId], references: [id])
+  parcel    Parcel         @relation(fields: [parcelId], references: [id])
+  payment   Payment?       @relation(fields: [paymentId], references: [id])
   documents DocumentFile[]
 
   @@unique([countryId, type, number])
@@ -795,12 +818,12 @@ model Consent {
 }
 
 model RetentionPolicy {
-  id              String  @id @default(uuid()) @db.Uuid
+  id              String   @id @default(uuid()) @db.Uuid
   category        String
-  retentionMonths Int     @map("retention_months")
+  retentionMonths Int      @map("retention_months")
   action          String
-  countryId       String? @map("country_id") @db.Uuid
-  updatedById     String? @map("updated_by") @db.Uuid
+  countryId       String?  @map("country_id") @db.Uuid
+  updatedById     String?  @map("updated_by") @db.Uuid
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([category, countryId])
@@ -834,6 +857,7 @@ model DataAccessRequest {
 
   @@map("data_access_requests")
 }
+
 /// Partenaire de livraison tiers pour une ville PARTNER — addendum 08, §1.4.
 /// Plusieurs partenaires actifs peuvent desservir la même ville, chacun avec
 /// sa propre zone de couverture et son propre tarif (PartnerTariff).
@@ -907,4 +931,122 @@ model PartnerSettlement {
 
   @@index([deliveryPartnerId, periodStart, periodEnd])
   @@map("partner_settlements")
+}
+
+// ============================================ Module fournisseurs (docs/11)
+
+/// Fournisseur externe confiant des colis groupés en expéditions — docs/11, §1/§2.1.
+model Supplier {
+  id              String   @id @default(uuid()) @db.Uuid
+  /// Identifiant anti-fraude attribué par le système (FRN-XXXXXX) — docs/11, §1.
+  code            String   @unique
+  name            String
+  contactName     String?  @map("contact_name")
+  contactPhone    String?  @map("contact_phone")
+  contactEmail    String?  @map("contact_email")
+  address         String?
+  countryId       String   @map("country_id") @db.Uuid
+  defaultAgencyId String   @map("default_agency_id") @db.Uuid
+  billingCurrency String   @map("billing_currency") @db.Char(3)
+  /// Compte de connexion au portail fournisseur — docs/11, §5. Null tant que non activé.
+  userId          String?  @unique @map("user_id") @db.Uuid
+  isActive        Boolean  @default(true) @map("is_active")
+  createdById     String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  country        Country           @relation(fields: [countryId], references: [id])
+  defaultAgency  Agency            @relation(fields: [defaultAgencyId], references: [id])
+  currency       Currency          @relation(fields: [billingCurrency], references: [code])
+  user           User?             @relation(fields: [userId], references: [id])
+  userRoleScopes UserRole[]
+  shipments      Shipment[]
+  parcels        Parcel[]
+  invoices       SupplierInvoice[]
+
+  @@index([countryId])
+  @@map("suppliers")
+}
+
+/// Expédition groupée : plusieurs colis, un client final différent chacun,
+/// facturés en une seule fois au fournisseur à la clôture — docs/11, §2.2.
+model Shipment {
+  id                      String         @id @default(uuid()) @db.Uuid
+  /// EXP-AAMM-NNNN, séquentiel par fournisseur/mois — docs/11, §3.
+  code                    String         @unique
+  supplierId              String         @map("supplier_id") @db.Uuid
+  originAgencyId          String         @map("origin_agency_id") @db.Uuid
+  status                  ShipmentStatus @default(OUVERTE)
+  /// Dénormalisé pour l'affichage — la source de vérité reste COUNT(parcels) à la clôture (docs/11 §4.2).
+  parcelCount             Int            @default(0) @map("parcel_count")
+  totalWeightKg           Decimal        @default(0) @map("total_weight_kg") @db.Decimal(10, 2)
+  currency                String         @db.Char(3)
+  totalAmountDue          Decimal        @default(0) @map("total_amount_due") @db.Decimal(18, 4)
+  referenceCurrency       String         @default("USD") @map("reference_currency") @db.Char(3)
+  totalAmountDueReference Decimal        @default(0) @map("total_amount_due_reference") @db.Decimal(18, 4)
+  openedById              String?        @map("opened_by") @db.Uuid
+  closedById              String?        @map("closed_by") @db.Uuid
+  openedAt                DateTime       @default(now()) @map("opened_at") @db.Timestamptz(6)
+  closedAt                DateTime?      @map("closed_at") @db.Timestamptz(6)
+  createdAt               DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  supplier     Supplier         @relation(fields: [supplierId], references: [id])
+  originAgency Agency           @relation(fields: [originAgencyId], references: [id])
+  parcels      Parcel[]
+  invoice      SupplierInvoice?
+
+  @@index([supplierId, status, openedAt])
+  @@map("shipments")
+}
+
+/// Facture unique adressée au fournisseur à la clôture d'une expédition —
+/// une ligne par client final (docs/11, §2.4/§4).
+model SupplierInvoice {
+  id                    String   @id @default(uuid()) @db.Uuid
+  shipmentId            String   @unique @map("shipment_id") @db.Uuid
+  supplierId            String   @map("supplier_id") @db.Uuid
+  /// FACT-{code fournisseur}-AAMM-NNNN — docs/11, §3.
+  number                String   @unique
+  currency              String   @db.Char(3)
+  amountGross           Decimal  @map("amount_gross") @db.Decimal(18, 4)
+  referenceCurrency     String   @map("reference_currency") @db.Char(3)
+  amountReference       Decimal  @map("amount_reference") @db.Decimal(18, 4)
+  fxRate                Decimal  @map("fx_rate") @db.Decimal(18, 8)
+  issuedAt              DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+  issuedById            String?  @map("issued_by") @db.Uuid
+  storageKey            String?  @map("storage_key")
+  legalMentionsSnapshot Json     @map("legal_mentions_snapshot")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  shipment Shipment              @relation(fields: [shipmentId], references: [id])
+  supplier Supplier              @relation(fields: [supplierId], references: [id])
+  lines    SupplierInvoiceLine[]
+
+  @@index([supplierId, issuedAt])
+  @@map("supplier_invoices")
+}
+
+/// Une ligne par colis/client final — instantané figé au moment de la
+/// clôture, indépendant de toute modification ultérieure du contact
+/// (docs/11, §2.5).
+model SupplierInvoiceLine {
+  id                   String   @id @default(uuid()) @db.Uuid
+  supplierInvoiceId    String   @map("supplier_invoice_id") @db.Uuid
+  parcelId             String   @unique @map("parcel_id") @db.Uuid
+  trackingNumber       String   @map("tracking_number")
+  recipientName        String   @map("recipient_name")
+  recipientPhone       String?  @map("recipient_phone")
+  destinationCityLabel String   @map("destination_city_label")
+  weightKg             Decimal  @map("weight_kg") @db.Decimal(10, 2)
+  amount               Decimal  @db.Decimal(18, 4)
+  currency             String   @db.Char(3)
+  amountReference      Decimal  @map("amount_reference") @db.Decimal(18, 4)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  supplierInvoice SupplierInvoice @relation(fields: [supplierInvoiceId], references: [id], onDelete: Cascade)
+  parcel          Parcel          @relation(fields: [parcelId], references: [id])
+
+  @@index([supplierInvoiceId])
+  @@map("supplier_invoice_lines")
 }

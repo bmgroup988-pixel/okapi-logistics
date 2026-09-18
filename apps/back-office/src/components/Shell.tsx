@@ -5,7 +5,7 @@ import { useApplyBrandColors, useBranding } from '../lib/branding';
 import { Footer } from './Footer';
 
 export function Shell({ children }: { children: React.ReactNode }) {
-  const { me, logout, can } = useAuth();
+  const { me, logout, can, isSupplierOnly } = useAuth();
   const { t, locale } = useT();
   const { data: branding } = useBranding();
   useApplyBrandColors();
@@ -40,7 +40,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </header>
 
       <nav className="sidenav">
-        {item('/', t('nav.dashboard'))}
+        {isSupplierOnly ? item('/supplier-portal', t('nav.supplierPortal')) : item('/', t('nav.dashboard'))}
         {can('parcel:create') && item('/parcels/new', t('nav.new'))}
         {can('parcel:read') && item('/parcels', t('nav.parcels'))}
 
@@ -51,6 +51,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {can('tariff:read') && item('/tariffs', t('nav.tariffs'))}
         {can('fx:read') && item('/exchange-rates', t('nav.fx'))}
         {can('settlement:read') && item('/partner-settlements', t('nav.settlements'))}
+        {can('supplier:manage') && item('/suppliers', t('nav.suppliers'))}
 
         {(can('user:manage') || can('config:write') || can('city:write')) && (
           <div className="sep">{t('nav.config')}</div>

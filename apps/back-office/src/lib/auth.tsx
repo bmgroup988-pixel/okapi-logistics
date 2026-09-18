@@ -17,6 +17,8 @@ interface AuthState {
   login: (email: string, password: string, otp?: string) => Promise<void>;
   logout: () => Promise<void>;
   can: (perm: string) => boolean;
+  /** Compte fournisseur pur (portail self-service), sans accès staff — docs/11 §7. */
+  isSupplierOnly: boolean;
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -62,8 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const can = (perm: string) => !!me?.permissions.includes(perm);
+  const isSupplierOnly = can('shipment:read') && !can('parcel:read');
 
-  return <Ctx.Provider value={{ me, loading, login, logout, can }}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={{ me, loading, login, logout, can, isSupplierOnly }}>{children}</Ctx.Provider>
+  );
 }
 
 export function useAuth(): AuthState {

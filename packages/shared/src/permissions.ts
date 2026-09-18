@@ -34,6 +34,14 @@ export const PERMISSIONS = [
   /** Réconciliation des commissions partenaires — addendum 08, §5.5. */
   'settlement:read',
   'settlement:write',
+  /** Gestion interne des fournisseurs (création, activation du portail) — docs/11. */
+  'supplier:manage',
+  /** Portail fournisseur — docs/11, §5/§6.2. */
+  'shipment:create',
+  'shipment:read',
+  'shipment:close',
+  'supplier-parcel:create',
+  'supplier-invoice:read',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -74,8 +82,17 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
     'audit:read',
     'settlement:read',
     'settlement:write',
+    'supplier:manage',
   ],
   SUPER_ADMIN: [...PERMISSIONS],
+  /** Compte externe (portail self-service) — jamais de permission interne. */
+  FOURNISSEUR: [
+    'shipment:create',
+    'shipment:read',
+    'shipment:close',
+    'supplier-parcel:create',
+    'supplier-invoice:read',
+  ],
 };
 
 export function permissionsForRoles(roles: RoleCode[]): Set<Permission> {

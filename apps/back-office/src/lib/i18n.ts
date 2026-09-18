@@ -18,6 +18,8 @@ const STRINGS: Record<string, Record<Locale, string>> = {
   'nav.cities': { fr: 'Villes', en: 'Cities', zh: '城市' },
   'nav.deliveryPartners': { fr: 'Partenaires de livraison', en: 'Delivery partners', zh: '配送合作伙伴' },
   'nav.settlements': { fr: 'Réconciliation partenaires', en: 'Partner settlements', zh: '合作伙伴结算' },
+  'nav.suppliers': { fr: 'Fournisseurs', en: 'Suppliers', zh: '供应商' },
+  'nav.supplierPortal': { fr: 'Mes expéditions', en: 'My shipments', zh: '我的货运' },
   'auth.login': { fr: 'Se connecter', en: 'Sign in', zh: '登录' },
   'auth.email': { fr: 'E-mail', en: 'Email', zh: '邮箱' },
   'auth.password': { fr: 'Mot de passe', en: 'Password', zh: '密码' },

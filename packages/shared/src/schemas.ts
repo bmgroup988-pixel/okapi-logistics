@@ -282,3 +282,44 @@ export const partnerSettlementListQuerySchema = z.object({
   periodStart: z.string().date().optional(),
   periodEnd: z.string().date().optional(),
 });
+
+/* ------------------------------------------------------------------------ */
+/* Module fournisseurs — expéditions groupées, facturation consolidée (docs/11) */
+/* ------------------------------------------------------------------------ */
+
+export const supplierCreateSchema = z.object({
+  name: z.string().min(1).max(200),
+  contactName: z.string().max(160).optional().nullable(),
+  contactPhone: z.string().max(32).optional().nullable(),
+  contactEmail: z.string().email().max(200).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+  countryId: uuid,
+  defaultAgencyId: uuid,
+  billingCurrency: currencyCode,
+});
+export type SupplierCreateInput = z.infer<typeof supplierCreateSchema>;
+
+export const supplierUpdateSchema = supplierCreateSchema
+  .omit({ countryId: true, defaultAgencyId: true })
+  .partial()
+  .extend({ isActive: z.boolean().optional() });
+export type SupplierUpdateInput = z.infer<typeof supplierUpdateSchema>;
+
+export const supplierPortalActivateSchema = z.object({
+  email: z.string().email(),
+  fullName: z.string().min(1).max(160),
+});
+export type SupplierPortalActivateInput = z.infer<typeof supplierPortalActivateSchema>;
+
+/** Ajout d'un colis (un client final) à une expédition ouverte — docs/11 §2.3/§6.2. */
+export const supplierPortalParcelCreateSchema = z.object({
+  recipientName: z.string().min(1).max(160),
+  recipientPhone: z.string().min(3).max(32).optional().nullable(),
+  destinationCityId: uuid,
+  transportMode: z.enum(TRANSPORT_MODES).default('AIR'),
+  weightKg: weightString,
+  /** Montant dû pour ce colis, dans la devise de facturation du fournisseur. */
+  amount: positiveDecimalString,
+  contentNature: z.string().min(1).max(500).default('Colis fournisseur'),
+});
+export type SupplierPortalParcelCreateInput = z.infer<typeof supplierPortalParcelCreateSchema>;

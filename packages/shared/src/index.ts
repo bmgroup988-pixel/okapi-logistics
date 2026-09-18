@@ -10,3 +10,4 @@ export * from './schemas.js';
 export * from './api.js';
 export * from './i18n.js';
 export * from './geo-names.js';
+export * from './supplier.js';
