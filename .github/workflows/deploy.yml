@@ -76,7 +76,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /opt/okapi-logistics
-            docker compose -f infra/docker-compose.prod.yml pull
-            docker compose -f infra/docker-compose.prod.yml up -d
-            docker compose -f infra/docker-compose.prod.yml exec -T api npx prisma migrate deploy
+            docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod pull
+            docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod up -d
+            docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod exec -T api npx prisma migrate deploy
+            docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod exec -T api npm run db:constraints
             docker image prune -f
