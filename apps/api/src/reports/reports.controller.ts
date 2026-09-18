@@ -13,8 +13,18 @@ export class ReportsController {
   financialStatus(
     @Query('periodStart') periodStart: string | undefined,
     @Query('periodEnd') periodEnd: string | undefined,
+    @Query('agencyIds') agencyIds: string | undefined,
+    @Query('currency') currency: string | undefined,
     @CurrentUser() user: CurrentUserType,
   ) {
-    return this.reports.financialStatus({ periodStart, periodEnd }, user);
+    return this.reports.financialStatus(
+      {
+        periodStart,
+        periodEnd,
+        agencyIds: agencyIds ? agencyIds.split(',').filter(Boolean) : undefined,
+        displayCurrency: currency,
+      },
+      user,
+    );
   }
 }

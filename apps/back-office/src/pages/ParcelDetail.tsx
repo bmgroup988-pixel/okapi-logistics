@@ -15,6 +15,8 @@ export function ParcelDetail() {
   const [tab, setTab] = useState<Tab>('suivi');
   const [showPay, setShowPay] = useState(false);
   const [showTransition, setShowTransition] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
 
   const parcel = useQuery({ queryKey: ['parcel', id], queryFn: () => api<ParcelD>(`/parcels/${id}`) });
   const payments = useQuery({
@@ -47,6 +49,16 @@ export function ParcelDetail() {
           {p.paymentStatus} — solde <Money m={p.balance} />
         </Pill>
         <span style={{ flex: 1 }} />
+        {can('parcel:update') && p.status !== 'LIVRE' && p.status !== 'ANNULE' && (
+          <button className="btn ghost" onClick={() => setShowEdit(true)}>
+            Modifier
+          </button>
+        )}
+        {can('parcel:cancel') && p.status !== 'LIVRE' && p.status !== 'ANNULE' && (
+          <button className="btn ghost" style={{ color: 'var(--err)' }} onClick={() => setShowCancel(true)}>
+            Annuler le colis
+          </button>
+        )}
         {can('parcel:transition') && p.status !== 'LIVRE' && p.status !== 'ANNULE' && (
           <button className="btn" onClick={() => setShowTransition(true)}>
             Changer le statut
@@ -240,7 +252,140 @@ export function ParcelDetail() {
           }}
         />
       )}
+      {showEdit && (
+        <EditModal
+          parcelId={id}
+          parcel={p}
+          onClose={() => setShowEdit(false)}
+          onDone={() => {
+            setShowEdit(false);
+            refresh();
+          }}
+        />
+      )}
+      {showCancel && (
+        <CancelModal
+          parcelId={id}
+          onClose={() => setShowCancel(false)}
+          onDone={() => {
+            setShowCancel(false);
+            refresh();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+function EditModal({
+  parcelId,
+  parcel,
+  onClose,
+  onDone,
+}: {
+  parcelId: string;
+  parcel: ParcelD;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [senderName, setSenderName] = useState(parcel.sender.name);
+  const [senderPhone, setSenderPhone] = useState(parcel.sender.phone ?? '');
+  const [recipientName, setRecipientName] = useState(parcel.recipient.name);
+  const [recipientPhone, setRecipientPhone] = useState(parcel.recipient.phone ?? '');
+  const [contentNature, setContentNature] = useState(parcel.contentNature);
+  const [weightKg, setWeightKg] = useState(parcel.weightKg);
+
+  const m = useMutation({
+    mutationFn: () =>
+      api(`/parcels/${parcelId}`, {
+        method: 'PATCH',
+        body: {
+          sender: { name: senderName, phone: senderPhone || null },
+          recipient: { name: recipientName, phone: recipientPhone || null },
+          contentNature,
+          weightKg,
+        },
+      }),
+    onSuccess: onDone,
+  });
+
+  return (
+    <Modal title="Modifier le colis" onClose={onClose}>
+      <div className="grid2">
+        <div className="field">
+          <label>Expéditeur — nom</label>
+          <input value={senderName} onChange={(e) => setSenderName(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Expéditeur — téléphone</label>
+          <input value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Destinataire — nom</label>
+          <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Destinataire — téléphone</label>
+          <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} />
+        </div>
+      </div>
+      <div className="row">
+        <div className="field">
+          <label>Nature du contenu</label>
+          <input value={contentNature} onChange={(e) => setContentNature(e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Poids (kg)</label>
+          <input value={weightKg} inputMode="decimal" onChange={(e) => setWeightKg(e.target.value)} />
+        </div>
+      </div>
+      <ErrorText error={m.error} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button className="btn" onClick={onClose}>Annuler</button>
+        <button className="btn primary" disabled={m.isPending} onClick={() => m.mutate()}>
+          Enregistrer les modifications
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function CancelModal({
+  parcelId,
+  onClose,
+  onDone,
+}: {
+  parcelId: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = useState('');
+
+  const m = useMutation({
+    mutationFn: () => api(`/parcels/${parcelId}/cancel`, { method: 'POST', body: { reason } }),
+    onSuccess: onDone,
+  });
+
+  return (
+    <Modal title="Annuler ce colis" onClose={onClose}>
+      <p className="error">Cette action est définitive — le colis passera au statut ANNULÉ.</p>
+      <div className="field">
+        <label>Motif de l'annulation * (min. 3 caractères)</label>
+        <input value={reason} onChange={(e) => setReason(e.target.value)} />
+      </div>
+      <ErrorText error={m.error} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button className="btn" onClick={onClose}>Retour</button>
+        <button
+          className="btn primary"
+          style={{ background: 'var(--err)', borderColor: 'var(--err)' }}
+          disabled={reason.trim().length < 3 || m.isPending}
+          onClick={() => m.mutate()}
+        >
+          Confirmer l'annulation
+        </button>
+      </div>
+    </Modal>
   );
 }
 

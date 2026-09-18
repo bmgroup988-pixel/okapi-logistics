@@ -1,8 +1,20 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import type { Paginated, ParcelSummary } from '../lib/types';
 import { CityLabel, Loading, Pill, paymentKind } from '../components/ui';
+
+interface AgencyOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
+interface CurrencyOption {
+  code: string;
+  symbol: string;
+  isActive: boolean;
+}
 
 interface FinancialStatus {
   currency: string;
@@ -48,14 +60,38 @@ function money(amount: string, currency: string): string {
 export function Reports() {
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
+  const [agencyIds, setAgencyIds] = useState<string[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState('');
+
+  const agencies = useQuery({
+    queryKey: ['reference-agencies'],
+    queryFn: () => api<AgencyOption[]>('/reference/agencies'),
+  });
+  const currencies = useQuery({
+    queryKey: ['ref-currencies'],
+    queryFn: () => api<CurrencyOption[]>('/reference/currencies'),
+  });
 
   const financial = useQuery({
-    queryKey: ['reports-financial-status', periodStart, periodEnd],
+    queryKey: ['reports-financial-status', periodStart, periodEnd, agencyIds, selectedCurrency],
     queryFn: () =>
       api<FinancialStatus>('/admin/reports/financial-status', {
-        query: { periodStart: periodStart || undefined, periodEnd: periodEnd || undefined },
+        query: {
+          periodStart: periodStart || undefined,
+          periodEnd: periodEnd || undefined,
+          agencyIds: agencyIds.length ? agencyIds.join(',') : undefined,
+          currency: selectedCurrency || undefined,
+        },
       }),
   });
+
+  const agencySelectionLabel = useMemo(() => {
+    if (agencyIds.length === 0) return 'Toutes les agences';
+    if (agencyIds.length === 1) {
+      return agencies.data?.find((a) => a.id === agencyIds[0])?.name ?? '1 agence';
+    }
+    return `${agencyIds.length} agences sélectionnées`;
+  }, [agencyIds, agencies.data]);
 
   const unpaid = useQuery({
     queryKey: ['report-unpaid'],
@@ -83,7 +119,45 @@ export function Reports() {
             <label>Jusqu'au</label>
             <input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
           </div>
+          <div className="field">
+            <label>Agence(s) — {agencySelectionLabel}</label>
+            <select
+              multiple
+              size={4}
+              value={agencyIds}
+              onChange={(e) => setAgencyIds([...e.target.selectedOptions].map((o) => o.value))}
+              style={{ minWidth: 220 }}
+            >
+              {(agencies.data ?? []).map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.code} — {a.name}
+                </option>
+              ))}
+            </select>
+            {agencyIds.length > 0 && (
+              <button type="button" className="btn ghost" style={{ marginTop: 4 }} onClick={() => setAgencyIds([])}>
+                Toutes les agences
+              </button>
+            )}
+          </div>
+          <div className="field">
+            <label>Devise d'affichage</label>
+            <select value={selectedCurrency} onChange={(e) => setSelectedCurrency(e.target.value)}>
+              <option value="">Référence (USD)</option>
+              {(currencies.data ?? [])
+                .filter((c) => c.isActive)
+                .map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} ({c.symbol})
+                  </option>
+                ))}
+            </select>
+          </div>
         </div>
+        <p className="muted" style={{ fontSize: 12, marginTop: -8 }}>
+          Ctrl/Cmd + clic pour sélectionner plusieurs agences. Les montants sont toujours agrégés en
+          devise de référence puis convertis au taux du jour vers la devise choisie.
+        </p>
 
         {financial.isLoading ? (
           <Loading />
@@ -95,17 +169,17 @@ export function Reports() {
                 <div className="num">{g.parcelCount} colis</div>
               </div>
               <div className="kpi">
-                <div className="lab">Facturé (réf. {currency})</div>
+                <div className="lab">Facturé ({currency})</div>
                 <div className="num">{money(g.billed, currency)}</div>
               </div>
               <div className="kpi">
-                <div className="lab">Encaissé (réf. {currency})</div>
+                <div className="lab">Encaissé ({currency})</div>
                 <div className="num" style={{ color: 'var(--ok)' }}>
                   {money(g.collected, currency)}
                 </div>
               </div>
               <div className="kpi">
-                <div className="lab">Impayé (réf. {currency})</div>
+                <div className="lab">Impayé ({currency})</div>
                 <div className="num" style={{ color: 'var(--err)' }}>
                   {money(g.unpaid, currency)}
                 </div>

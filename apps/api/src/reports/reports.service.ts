@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import type { ParcelStatus } from '@prisma/client';
-import { countryDisplayName, dAdd, dSub } from '@okapi/shared';
+import { API_ERROR_CODES, countryDisplayName, dAdd, dSub } from '@okapi/shared';
 import type { CurrentUser } from '../auth/current-user';
 import { parcelScopeWhere, paymentScopeWhere } from '../auth/scope';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,6 +9,10 @@ import { FxService } from '../fx/fx.service';
 export interface FinancialStatusQuery {
   periodStart?: string;
   periodEnd?: string;
+  /** Filtre sur une, plusieurs ou toutes les agences (vide/absent = toutes, dans le périmètre du compte). */
+  agencyIds?: string[];
+  /** Devise d'affichage des montants agrégés — défaut : devise de référence (USD). */
+  displayCurrency?: string;
 }
 
 interface AgencyRow {
@@ -40,6 +44,16 @@ export class ReportsService {
   ) {}
 
   async financialStatus(query: FinancialStatusQuery, user: CurrentUser) {
+    const displayCurrency = (query.displayCurrency || this.fx.referenceCurrency).toUpperCase();
+    if (displayCurrency !== this.fx.referenceCurrency) {
+      const currencyRow = await this.prisma.currency.findUnique({ where: { code: displayCurrency } });
+      if (!currencyRow || !currencyRow.isActive) {
+        throw new BadRequestException({
+          error: { code: API_ERROR_CODES.VALIDATION, message: `Devise d'affichage inactive ou inconnue : ${displayCurrency}` },
+        });
+      }
+    }
+
     const dateFilter =
       query.periodStart || query.periodEnd
         ? {
@@ -50,8 +64,17 @@ export class ReportsService {
           }
         : {};
 
-    const parcelWhere = { ...parcelScopeWhere(user), ...dateFilter };
-    const paymentWhere = { ...paymentScopeWhere(user), ...dateFilter };
+    const agencyFilter = query.agencyIds?.length ? { in: query.agencyIds } : undefined;
+    const parcelWhere = {
+      ...parcelScopeWhere(user),
+      ...dateFilter,
+      ...(agencyFilter ? { registrationAgencyId: agencyFilter } : {}),
+    };
+    const paymentWhere = {
+      ...paymentScopeWhere(user),
+      ...dateFilter,
+      ...(agencyFilter ? { agencyId: agencyFilter } : {}),
+    };
 
     const [statusCounts, billedByAgency, paymentsByAgency, agencies] = await Promise.all([
       this.prisma.parcel.groupBy({
@@ -146,17 +169,41 @@ export class ReportsService {
     ];
     for (const s of ALL_STATUSES) globalByStatus[s] ??= 0;
 
+    // Tout est agrégé en devise de référence (seule façon de sommer entre
+    // agences aux devises de facturation différentes) ; conversion finale
+    // vers la devise d'affichage demandée par le DAF, au taux du jour.
+    const now = new Date();
+    const toDisplay = async (amount: string): Promise<string> =>
+      displayCurrency === this.fx.referenceCurrency
+        ? amount
+        : (await this.fx.convert(amount, this.fx.referenceCurrency, displayCurrency, now)).amount;
+
+    const globalUnpaid = dSub(globalBilled, globalCollected);
+    const [gBilled, gCollected, gUnpaid] = await Promise.all([
+      toDisplay(globalBilled),
+      toDisplay(globalCollected),
+      toDisplay(globalUnpaid),
+    ]);
+    const byAgencyDisplay = await Promise.all(
+      byAgency.map(async (row) => ({
+        ...row,
+        billed: await toDisplay(row.billed),
+        collected: await toDisplay(row.collected),
+        unpaid: await toDisplay(row.unpaid),
+      })),
+    );
+
     return {
-      currency: this.fx.referenceCurrency,
+      currency: displayCurrency,
       global: {
         agencyCount: byAgency.length,
         parcelCount: globalParcelCount,
         byStatus: globalByStatus,
-        billed: globalBilled,
-        collected: globalCollected,
-        unpaid: dSub(globalBilled, globalCollected),
+        billed: gBilled,
+        collected: gCollected,
+        unpaid: gUnpaid,
       },
-      byAgency,
+      byAgency: byAgencyDisplay,
     };
   }
 }
