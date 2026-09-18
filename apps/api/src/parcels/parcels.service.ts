@@ -118,10 +118,34 @@ export class ParcelsService {
     let destinationAgencyId: string | null = null;
     let deliveryPartnerId: string | null = input.deliveryPartnerId ?? null;
     if (destination.status === 'HUB') {
-      const destAgency = await this.prisma.agency.findFirst({
-        where: { cityId: destination.id, isActive: true },
-      });
-      destinationAgencyId = destAgency?.id ?? null;
+      if (input.destinationAgencyId) {
+        const chosen = await this.prisma.agency.findFirst({
+          where: { id: input.destinationAgencyId, cityId: destination.id, isActive: true },
+        });
+        if (!chosen) {
+          throw new BadRequestException({
+            error: {
+              code: API_ERROR_CODES.VALIDATION,
+              message: 'Agence de destination invalide pour cette ville',
+            },
+          });
+        }
+        destinationAgencyId = chosen.id;
+      } else {
+        const active = await this.prisma.agency.findMany({
+          where: { cityId: destination.id, isActive: true },
+          select: { id: true },
+        });
+        if (active.length > 1) {
+          throw new BadRequestException({
+            error: {
+              code: API_ERROR_CODES.VALIDATION,
+              message: 'Plusieurs agences desservent cette ville — préciser destinationAgencyId',
+            },
+          });
+        }
+        destinationAgencyId = active[0]?.id ?? null;
+      }
     } else if (destination.status === 'PARTNER') {
       if (deliveryPartnerId) {
         const chosen = await this.prisma.deliveryPartner.findFirst({

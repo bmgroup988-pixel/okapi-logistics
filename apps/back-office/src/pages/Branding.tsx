@@ -166,8 +166,10 @@ export function Branding() {
               onChange={(e) => void onLogoPick(e.target.files?.[0])}
             />
             <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>
-              PNG, JPEG, WebP ou SVG — 400 Ko max. Remplace le logo par défaut partout (back-office,
-              connexion, site public).
+              PNG, JPEG, WebP ou SVG — 400 Ko max, idéalement carré (ex. 512×512 px) pour un rendu net
+              partout où il est réduit. Remplace le logo par défaut partout (back-office, connexion, site
+              public) ainsi que l'icône d'onglet du navigateur — quelques secondes après
+              l'enregistrement.
             </p>
             {logoError && <p className="error">{logoError}</p>}
             {values['branding.logoUrl'] && (

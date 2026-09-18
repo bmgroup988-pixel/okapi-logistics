@@ -27,6 +27,13 @@ export const roleAssignSchema = z
   .refine((d) => d.roleCode !== 'AGENT_FRET' || !!d.scopeAgencyId, {
     message: 'un agent doit être rattaché à une agence',
     path: ['scopeAgencyId'],
+  })
+  .refine((d) => d.roleCode !== 'FOURNISSEUR', {
+    // Un compte FOURNISSEUR doit toujours être scopé à un fournisseur
+    // (scopeSupplierId) — passer par POST /admin/suppliers/:id/activate-portal,
+    // pas par cette attribution de rôle générique (docs/11 §5).
+    message: 'Le rôle FOURNISSEUR se crée via l’activation du portail fournisseur',
+    path: ['roleCode'],
   });
 
 export type UserCreateInput = z.infer<typeof userCreateSchema>;

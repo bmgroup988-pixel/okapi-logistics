@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { manualRateSchema } from '@okapi/shared';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { API_ERROR_CODES, manualRateSchema } from '@okapi/shared';
 import { z } from 'zod';
 import { AuditService } from '../audit/audit.service';
 import type { CurrentUser as CurrentUserType } from '../auth/current-user';
@@ -84,7 +84,18 @@ export class FxController {
   ) {
     const reference = this.fx.referenceCurrency;
     if (body.baseCurrency === reference) {
-      return { error: 'La devise de référence ne peut pas avoir de taux vers elle-même' };
+      throw new BadRequestException({
+        error: {
+          code: API_ERROR_CODES.VALIDATION,
+          message: 'La devise de référence ne peut pas avoir de taux vers elle-même',
+        },
+      });
+    }
+    const currency = await this.prisma.currency.findUnique({ where: { code: body.baseCurrency } });
+    if (!currency || !currency.isActive) {
+      throw new BadRequestException({
+        error: { code: API_ERROR_CODES.VALIDATION, message: `Devise inactive ou inconnue : ${body.baseCurrency}` },
+      });
     }
     const row = await this.prisma.exchangeRate.create({
       data: {

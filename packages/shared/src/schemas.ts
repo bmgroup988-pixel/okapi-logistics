@@ -59,6 +59,13 @@ export const parcelCreateSchema = z.object({
    * plusieurs sans préféré.
    */
   deliveryPartnerId: uuid.optional().nullable(),
+  /**
+   * Agence de destination choisie pour une destination `HUB`. Optionnel : à
+   * défaut, l'unique agence active de la ville est retenue automatiquement ;
+   * requis explicitement s'il en existe plusieurs (même logique que
+   * `deliveryPartnerId` pour les villes `PARTNER`).
+   */
+  destinationAgencyId: uuid.optional().nullable(),
   transportMode: z.enum(TRANSPORT_MODES),
   weightKg: weightString,
   contentNature: z.string().min(1).max(500),

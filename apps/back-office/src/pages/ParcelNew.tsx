@@ -23,6 +23,13 @@ interface PartnerOption {
   currentTariff: { pricePerKg: string; currency: string } | null;
 }
 
+interface AgencyOption {
+  id: string;
+  code: string;
+  name: string;
+  cityId: string;
+}
+
 function Steps({ n }: { n: number }) {
   const { t } = useT();
   return (
@@ -75,6 +82,7 @@ export function ParcelNew() {
     clientChannel: 'WHATSAPP',
     clientLocale: 'fr',
     deliveryPartnerId: '',
+    destinationAgencyId: '',
     consent: false,
   });
   const set = (k: keyof typeof form, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }));
@@ -105,12 +113,23 @@ export function ParcelNew() {
     [dests, form.destinationCityId],
   );
   const isPartnerDestination = destinationCity?.status === 'PARTNER';
+  const isHubDestination = destinationCity?.status === 'HUB';
 
   const partners = useQuery({
     queryKey: ['delivery-partners-for-city', form.destinationCityId],
     queryFn: () => api<PartnerOption[]>('/reference/delivery-partners', { query: { cityId: form.destinationCityId } }),
     enabled: isPartnerDestination,
   });
+
+  const agencies = useQuery({
+    queryKey: ['ref-agencies'],
+    queryFn: () => api<AgencyOption[]>('/reference/agencies'),
+    enabled: isHubDestination,
+  });
+  const agenciesForDestination = useMemo(
+    () => (agencies.data ?? []).filter((a) => a.cityId === form.destinationCityId),
+    [agencies.data, form.destinationCityId],
+  );
 
   // Présélectionne le partenaire préféré, ou l'unique partenaire actif — l'agent
   // peut toujours changer si la zone exacte du destinataire l'exige.
@@ -126,6 +145,19 @@ export function ParcelNew() {
     // volontairement sans form.deliveryPartnerId dans les deps : ne réagit qu'aux
     // changements de destination/liste de partenaires, pas au choix de l'agent.
   }, [isPartnerDestination, partners.data]);
+
+  // Présélectionne l'unique agence active de la ville — l'agent garde la main
+  // pour en choisir une autre si plusieurs agences Okapi desservent la ville.
+  useEffect(() => {
+    if (!isHubDestination) {
+      if (form.destinationAgencyId) set('destinationAgencyId', '');
+      return;
+    }
+    if (form.destinationAgencyId) return;
+    if (agenciesForDestination.length === 1) set('destinationAgencyId', agenciesForDestination[0]!.id);
+    // volontairement sans form.destinationAgencyId dans les deps : même logique
+    // que le préchoix de partenaire ci-dessus.
+  }, [isHubDestination, agenciesForDestination]);
 
   const submitStep1 = async () => {
     setError(null);
@@ -149,6 +181,7 @@ export function ParcelNew() {
           clientChannel: form.clientChannel,
           clientLocale: form.clientLocale,
           deliveryPartnerId: form.deliveryPartnerId || undefined,
+          destinationAgencyId: form.destinationAgencyId || undefined,
           consent: { given: true, textVersion: 'v1-2026-01' },
         },
       });
@@ -196,6 +229,7 @@ export function ParcelNew() {
   };
 
   const needsPartnerChoice = isPartnerDestination && (partners.data ?? []).length > 0;
+  const needsAgencyChoice = isHubDestination && agenciesForDestination.length > 0;
   const valid1 =
     form.senderName &&
     form.recipientName &&
@@ -204,7 +238,8 @@ export function ParcelNew() {
     Number(form.weightKg) > 0 &&
     form.contentNature &&
     form.consent &&
-    (!needsPartnerChoice || form.deliveryPartnerId);
+    (!needsPartnerChoice || form.deliveryPartnerId) &&
+    (!needsAgencyChoice || form.destinationAgencyId);
 
   return (
     <>
@@ -326,6 +361,34 @@ export function ParcelNew() {
               <span>Le client accepte les mentions d’information (suivi, notifications).</span>
             </label>
           </div>
+
+          {isHubDestination && (
+            <div className="card">
+              <h3>Agence de destination — <CityLabel code={destinationCity?.code} /></h3>
+              {agencies.isLoading ? (
+                <p className="muted">Chargement…</p>
+              ) : agenciesForDestination.length === 0 ? (
+                <p className="error">
+                  Aucune agence active dans cette ville — vérifiez la configuration (écran « Villes »).
+                </p>
+              ) : (
+                <div className="field">
+                  <label>Agence {agenciesForDestination.length > 1 ? '*' : ''}</label>
+                  <select
+                    value={form.destinationAgencyId}
+                    onChange={(e) => set('destinationAgencyId', e.target.value)}
+                  >
+                    {agenciesForDestination.length > 1 && <option value="">—</option>}
+                    {agenciesForDestination.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.code} — {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           {isPartnerDestination && (
             <div className="card">

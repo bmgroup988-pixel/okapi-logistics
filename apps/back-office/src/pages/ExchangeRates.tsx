@@ -4,6 +4,13 @@ import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { ErrorText, Loading, Pill } from '../components/ui';
 
+interface Currency {
+  code: string;
+  symbol: string;
+  isActive: boolean;
+  isReference: boolean;
+}
+
 interface RateRow {
   currency: string;
   rateToReference: string | null;
@@ -19,6 +26,10 @@ export function ExchangeRates() {
   const rates = useQuery({
     queryKey: ['fx-rates'],
     queryFn: () => api<{ referenceCurrency: string; rates: RateRow[] }>('/admin/exchange-rates'),
+  });
+  const currencies = useQuery({
+    queryKey: ['ref-currencies'],
+    queryFn: () => api<Currency[]>('/reference/currencies'),
   });
 
   const [base, setBase] = useState('');
@@ -45,7 +56,8 @@ export function ExchangeRates() {
       <div className="card">
         <p className="muted">
           Devise de référence : <b>{rates.data?.referenceCurrency ?? 'USD'}</b> · source auto :
-          exchangerate.host
+          exchangerate.host. Chaque devise ci-dessous a son propre taux indépendant — en enregistrer un
+          nouveau pour l'une ne modifie jamais les autres.
         </p>
         {can('fx:write') && (
           <button className="btn" disabled={sync.isPending} onClick={() => sync.mutate()}>
@@ -96,7 +108,16 @@ export function ExchangeRates() {
           <div className="row">
             <div className="field">
               <label>Devise → référence</label>
-              <input value={base} maxLength={3} onChange={(e) => setBase(e.target.value.toUpperCase())} />
+              <select value={base} onChange={(e) => setBase(e.target.value)}>
+                <option value="">—</option>
+                {(currencies.data ?? [])
+                  .filter((c) => c.isActive && !c.isReference)
+                  .map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code} ({c.symbol})
+                    </option>
+                  ))}
+              </select>
             </div>
             <div className="field">
               <label>Taux (1 unité = ? réf.)</label>

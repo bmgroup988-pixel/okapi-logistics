@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { DICT, LOCALES, isLocale } from '../../lib/i18n';
@@ -6,6 +7,13 @@ import { IconFacebook, IconGlobe, IconInstagram, IconMail, IconPhone, IconTiktok
 
 export function generateStaticParams() {
   return LOCALES.map((lang) => ({ lang }));
+}
+
+/** Icône d'onglet dynamique — reflète le logo configuré dans Identité visuelle (back-office). */
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await fetchBranding();
+  if (!branding.logoUrl) return {};
+  return { icons: { icon: branding.logoUrl, apple: branding.logoUrl } };
 }
 
 const HEX = /^#[0-9a-fA-F]{3,8}$/;

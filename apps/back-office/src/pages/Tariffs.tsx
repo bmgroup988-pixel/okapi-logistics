@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { City } from '../lib/types';
-import { CityLabel, ErrorText, Loading } from '../components/ui';
+import { CityLabel, ErrorText, Loading, Pill } from '../components/ui';
+
+interface Currency {
+  code: string;
+  symbol: string;
+  isActive: boolean;
+}
 
 interface Tariff {
   id: string;
@@ -24,6 +30,10 @@ export function Tariffs() {
   const cities = useQuery({
     queryKey: ['ref-cities'],
     queryFn: () => api<(City & { code: string; name: string })[]>('/reference/cities'),
+  });
+  const currencies = useQuery({
+    queryKey: ['ref-currencies'],
+    queryFn: () => api<Currency[]>('/reference/currencies'),
   });
 
   const [f, setF] = useState({
@@ -47,6 +57,11 @@ export function Tariffs() {
   return (
     <>
       <h1>Tarifs — prix par kg par destination</h1>
+      <p className="muted">
+        Chaque destination n'a qu'un seul tarif <strong>en vigueur</strong> à la fois — enregistrer un
+        nouveau tarif ferme automatiquement l'ancien (visible ci-dessous comme « historique »), il ne le
+        double jamais.
+      </p>
       <div className="card">
         {list.isLoading ? (
           <Loading />
@@ -54,6 +69,7 @@ export function Tariffs() {
           <table className="data">
             <thead>
               <tr>
+                <th>Statut</th>
                 <th>Destination</th>
                 <th>Mode</th>
                 <th>Prix/kg</th>
@@ -64,17 +80,22 @@ export function Tariffs() {
               </tr>
             </thead>
             <tbody>
-              {(list.data ?? []).map((t) => (
-                <tr key={t.id}>
-                  <td>{t.destinationCityCode ? <CityLabel code={t.destinationCityCode} /> : '(corridor)'}</td>
-                  <td>{t.mode}</td>
-                  <td className="mono">{t.pricePerKg} {t.currency}</td>
-                  <td>{t.fixedFee}</td>
-                  <td>{t.minCharge}</td>
-                  <td className="muted">{t.validFrom}</td>
-                  <td className="muted">{t.validTo ?? '—'}</td>
-                </tr>
-              ))}
+              {[...(list.data ?? [])]
+                .sort((a, b) => (a.validTo === null ? -1 : 1) - (b.validTo === null ? -1 : 1))
+                .map((t) => (
+                  <tr key={t.id} style={t.validTo ? { opacity: 0.55 } : undefined}>
+                    <td>
+                      <Pill kind={t.validTo ? undefined : 'ok'}>{t.validTo ? 'Historique' : 'En vigueur'}</Pill>
+                    </td>
+                    <td>{t.destinationCityCode ? <CityLabel code={t.destinationCityCode} /> : '(corridor)'}</td>
+                    <td>{t.mode}</td>
+                    <td className="mono">{t.pricePerKg} {t.currency}</td>
+                    <td>{t.fixedFee}</td>
+                    <td>{t.minCharge}</td>
+                    <td className="muted">{t.validFrom}</td>
+                    <td className="muted">{t.validTo ?? '—'}</td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         )}
@@ -102,7 +123,15 @@ export function Tariffs() {
             </div>
             <div className="field">
               <label>Devise</label>
-              <input value={f.currency} maxLength={3} onChange={(e) => set('currency', e.target.value.toUpperCase())} />
+              <select value={f.currency} onChange={(e) => set('currency', e.target.value)}>
+                {(currencies.data ?? [])
+                  .filter((c) => c.isActive)
+                  .map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code} ({c.symbol})
+                    </option>
+                  ))}
+              </select>
             </div>
           </div>
           <div className="row">

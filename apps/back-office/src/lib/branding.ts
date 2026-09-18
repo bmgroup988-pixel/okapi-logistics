@@ -65,6 +65,18 @@ export function useApplyBrandColors() {
       }
     }
   }, [data]);
+  useEffect(() => {
+    if (!data?.logoUrl) return;
+    for (const rel of ['icon', 'apple-touch-icon']) {
+      let link = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = rel;
+        document.head.appendChild(link);
+      }
+      link.href = data.logoUrl;
+    }
+  }, [data?.logoUrl]);
 }
 
 export function whatsappHref(number: string): string {
