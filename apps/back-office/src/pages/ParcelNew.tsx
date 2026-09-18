@@ -477,10 +477,10 @@ export function ParcelNew() {
 
       {step === 2 && parcel && (
         <div className="card">
-          <h3>Photo obligatoire — {parcel.trackingNumber}</h3>
+          <h3>Photo — {parcel.trackingNumber}</h3>
           <p className="muted">
-            Prenez ou importez une photo du colis (preuve en cas de litige). L’enregistrement est
-            déjà créé ; la photo lui est liée définitivement.
+            Prenez ou importez une photo du colis (preuve en cas de litige). Facultatif : vous pouvez
+            l'ajouter plus tard depuis la fiche du colis pour accélérer l'enregistrement.
           </p>
           <input
             type="file"
@@ -493,6 +493,11 @@ export function ParcelNew() {
             disabled={busy}
           />
           {busy && <p className="muted">Envoi…</p>}
+          <div style={{ marginTop: 12 }}>
+            <button className="btn ghost" disabled={busy} onClick={() => setStep(3)}>
+              Passer cette étape — ajouter la photo plus tard
+            </button>
+          </div>
         </div>
       )}
 

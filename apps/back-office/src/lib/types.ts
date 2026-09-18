@@ -58,6 +58,8 @@ export interface ParcelDetail extends ParcelSummary {
   recipient: Contact;
   clientChannel: string | null;
   clientLocale: string;
+  carrierId: string | null;
+  carrierName: string | null;
   events: ParcelEvent[];
   photos: Photo[];
   updatedAt: string;

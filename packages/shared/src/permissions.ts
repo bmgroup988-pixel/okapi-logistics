@@ -36,6 +36,8 @@ export const PERMISSIONS = [
   'settlement:write',
   /** Gestion interne des fournisseurs (création, activation du portail) — docs/11. */
   'supplier:manage',
+  /** Gestion des compagnies de transport sous-traitées — réservé super-admin. */
+  'carrier:manage',
   /** Portail fournisseur — docs/11, §5/§6.2. */
   'shipment:create',
   'shipment:read',

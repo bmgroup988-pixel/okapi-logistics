@@ -69,6 +69,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {can('fx:read') && item('/exchange-rates', t('nav.fx'))}
         {can('settlement:read') && item('/partner-settlements', t('nav.settlements'))}
         {can('supplier:manage') && item('/suppliers', t('nav.suppliers'))}
+        {can('carrier:manage') && item('/carriers', t('nav.carriers'))}
 
         {(can('user:manage') || can('config:write') || can('city:write')) && (
           <div className="sep">{t('nav.config')}</div>

@@ -17,6 +17,7 @@ import { PartnerSettlements } from './pages/PartnerSettlements';
 import { Suppliers } from './pages/Suppliers';
 import { SupplierPortal } from './pages/SupplierPortal';
 import { Profile } from './pages/Profile';
+import { Carriers } from './pages/Carriers';
 
 function Guard({ perm, children }: { perm?: string; children: React.ReactNode }) {
   const { can } = useAuth();
@@ -48,6 +49,7 @@ export function App() {
         />
         <Route path="/suppliers" element={<Guard perm="supplier:manage"><Suppliers /></Guard>} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/carriers" element={<Guard perm="carrier:manage"><Carriers /></Guard>} />
         <Route path="/parcels" element={<Guard perm="parcel:read"><ParcelsList /></Guard>} />
         <Route path="/parcels/new" element={<Guard perm="parcel:create"><ParcelNew /></Guard>} />
         <Route path="/parcels/:id" element={<Guard perm="parcel:read"><ParcelDetail /></Guard>} />

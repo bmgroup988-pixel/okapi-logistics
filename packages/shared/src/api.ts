@@ -96,9 +96,20 @@ export interface ParcelDetailDto extends ParcelSummaryDto {
   recipient: ContactDto;
   clientChannel: NotificationChannel | null;
   clientLocale: Locale;
+  carrierId: string | null;
+  carrierName: string | null;
   events: ParcelEventDto[];
   photos: PhotoDto[];
   updatedAt: string;
+}
+
+export interface CarrierDto {
+  id: string;
+  name: string;
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  isActive: boolean;
 }
 
 export interface ContactDto {

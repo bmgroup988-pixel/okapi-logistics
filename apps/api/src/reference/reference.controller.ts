@@ -78,6 +78,16 @@ export class ReferenceController {
     }));
   }
 
+  /** Compagnies de transport actives — visible de tout le personnel interne pour le choix à l'expédition. */
+  @Get('carriers')
+  async carriers() {
+    const rows = await this.prisma.carrier.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+    });
+    return rows.map((c) => ({ id: c.id, name: c.name }));
+  }
+
   @Get('currencies')
   async currencies() {
     const rows = await this.prisma.currency.findMany({ orderBy: { code: 'asc' } });

@@ -4,6 +4,7 @@ import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { CarriersModule } from './carriers/carriers.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { PermissionsGuard } from './auth/permissions.guard';
 import { BillingModule } from './billing/billing.module';
@@ -69,6 +70,7 @@ import { TariffsModule } from './tariffs/tariffs.module';
     HealthModule,
     SuppliersModule,
     SupplierPortalModule,
+    CarriersModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

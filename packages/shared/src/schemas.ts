@@ -101,6 +101,7 @@ export const parcelTransitionSchema = z
   .object({
     to: z.enum(['EN_TRANSIT', 'ARRIVE', 'HANDED_TO_PARTNER', 'LIVRE', 'RETOURNE']),
     locationCityId: uuid.optional().nullable(),
+    /** Lieu/pays de transit en texte libre — modifiable à chaque transition. */
     locationLabel: z.string().max(160).optional().nullable(),
     note: z.string().max(1000).optional().nullable(),
     visibleToClient: z.boolean().default(true),
@@ -113,6 +114,13 @@ export const parcelTransitionSchema = z
      * §1.4).
      */
     deliveryPartnerId: uuid.optional().nullable(),
+    /** Compagnie de transport choisie pour l'expédition (typiquement à EN_TRANSIT). */
+    carrierId: uuid.optional().nullable(),
+    /**
+     * Date/heure réelle de l'événement, si différente du moment de la
+     * saisie (ex. expédition enregistrée après coup) — défaut : maintenant.
+     */
+    occurredAt: z.string().datetime().optional(),
   })
   .refine((d) => d.to !== 'HANDED_TO_PARTNER' || !!d.deliveryPartnerId, {
     message: 'deliveryPartnerId est requis pour remettre le colis à un partenaire',
@@ -329,6 +337,15 @@ export const supplierPortalActivateSchema = z.object({
   fullName: z.string().min(1).max(160),
 });
 export type SupplierPortalActivateInput = z.infer<typeof supplierPortalActivateSchema>;
+
+export const carrierUpsertSchema = z.object({
+  name: z.string().min(1).max(200),
+  contactName: z.string().max(160).optional().nullable(),
+  contactPhone: z.string().max(32).optional().nullable(),
+  contactEmail: z.string().email().max(200).optional().nullable(),
+  isActive: z.boolean().default(true),
+});
+export type CarrierUpsertInput = z.infer<typeof carrierUpsertSchema>;
 
 /** Ajout d'un colis (un client final) à une expédition ouverte — docs/11 §2.3/§6.2. */
 export const supplierPortalParcelCreateSchema = z.object({

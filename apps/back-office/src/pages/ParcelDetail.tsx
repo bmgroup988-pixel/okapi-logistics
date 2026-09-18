@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, uuid } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import type { DocumentItem, ParcelDetail as ParcelD, Payment } from '../lib/types';
-import { CityLabel, CityPair, ErrorText, Loading, Modal, Money, Pill, paymentKind, statusKind } from '../components/ui';
+import { CityLabel, CityPair, CurrencyAmount, ErrorText, Loading, Modal, Money, Pill, paymentKind, statusKind } from '../components/ui';
 
 type Tab = 'suivi' | 'paiements' | 'photos' | 'documents';
 
@@ -109,8 +109,9 @@ export function ParcelDetail() {
               {p.contentNature}
             </p>
             <p className="muted">
-              Montant dû <Money m={p.amountDue} /> · réf. <Money m={p.amountDueReference} /> · canal{' '}
+              Montant dû <CurrencyAmount m={p.amountDue} /> · canal{' '}
               {p.clientChannel ?? '—'} · langue {p.clientLocale}
+              {p.carrierName ? <> · transporteur <b>{p.carrierName}</b></> : null}
             </p>
           </div>
         </>
@@ -121,7 +122,7 @@ export function ParcelDetail() {
           <h3>Paiements</h3>
           <p>
             Dû <Money m={p.amountDue} /> · Encaissé <Money m={p.amountPaid} /> · Solde{' '}
-            <b><Money m={p.balance} /></b>
+            <b><CurrencyAmount m={p.balance} /></b>
           </p>
           {can('payment:create') && p.status !== 'ANNULE' && (
             <button className="btn primary" onClick={() => setShowPay(true)}>
@@ -181,8 +182,8 @@ export function ParcelDetail() {
       {tab === 'photos' && (
         <div className="card">
           <h3>Photos</h3>
-          <div className="row">
-            {p.photos.length === 0 && <p className="muted">Aucune photo.</p>}
+          <div className="row" style={{ marginBottom: p.photos.length ? 16 : 0 }}>
+            {p.photos.length === 0 && <p className="muted">Aucune photo pour l'instant.</p>}
             {p.photos.map((ph) => (
               <figure key={ph.id} style={{ margin: 0 }}>
                 <img
@@ -197,6 +198,9 @@ export function ParcelDetail() {
               </figure>
             ))}
           </div>
+          {can('parcel:photo:write') && p.status !== 'ANNULE' && (
+            <PhotoUpload parcelId={id} isFirst={p.photos.length === 0} onDone={refresh} />
+          )}
         </div>
       )}
 
@@ -389,6 +393,65 @@ function CancelModal({
   );
 }
 
+async function sha256HexLocal(buf: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function PhotoUpload({ parcelId, isFirst, onDone }: { parcelId: string; isFirst: boolean; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  const upload = async (file: File) => {
+    setError(null);
+    setBusy(true);
+    try {
+      const presign = await api<{ url: string; key: string }>(`/parcels/${parcelId}/photos/presign`, {
+        method: 'POST',
+      });
+      const buf = await file.arrayBuffer();
+      const put = await fetch(presign.url, {
+        method: 'PUT',
+        body: buf,
+        headers: { 'content-type': file.type || 'image/jpeg' },
+      });
+      if (!put.ok) throw new Error(`Upload refusé (${put.status}).`);
+      await api(`/parcels/${parcelId}/photos`, {
+        method: 'POST',
+        body: {
+          storageKey: presign.key,
+          sha256: await sha256HexLocal(buf),
+          bytes: buf.byteLength,
+          mimeType: file.type || 'image/jpeg',
+          isPrimary: isFirst,
+        },
+      });
+      onDone();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        disabled={busy}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void upload(f);
+        }}
+      />
+      {busy && <p className="muted">Envoi…</p>}
+      <ErrorText error={error} />
+    </div>
+  );
+}
+
 function EncaissementModal({
   parcelId,
   billingCurrency,
@@ -487,6 +550,10 @@ interface PartnerOption {
   isPreferred: boolean;
   currentTariff: { pricePerKg: string; currency: string } | null;
 }
+interface CarrierOption {
+  id: string;
+  name: string;
+}
 
 /** Statuts atteignables depuis chaque statut — miroir de PARCEL_STATUS_FLOW (@okapi/shared). */
 const NEXT: Record<string, string[]> = {
@@ -515,6 +582,9 @@ function TransitionModal({
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
   const [deliveryPartnerId, setDeliveryPartnerId] = useState('');
+  const [locationLabel, setLocationLabel] = useState('');
+  const [carrierId, setCarrierId] = useState('');
+  const [occurredAt, setOccurredAt] = useState('');
 
   const cities = useQuery({
     queryKey: ['ref-cities-all'],
@@ -527,6 +597,11 @@ function TransitionModal({
     queryFn: () => api<PartnerOption[]>('/reference/delivery-partners', { query: { cityId: destCityId } }),
     enabled: to === 'HANDED_TO_PARTNER' && !!destCityId,
   });
+  const carriers = useQuery({
+    queryKey: ['ref-carriers'],
+    queryFn: () => api<CarrierOption[]>('/reference/carriers'),
+    enabled: to === 'EN_TRANSIT',
+  });
 
   const m = useMutation({
     mutationFn: () =>
@@ -537,6 +612,9 @@ function TransitionModal({
           note: note || undefined,
           unpaidOverrideReason: reason || undefined,
           deliveryPartnerId: to === 'HANDED_TO_PARTNER' ? deliveryPartnerId : undefined,
+          locationLabel: locationLabel || undefined,
+          carrierId: to === 'EN_TRANSIT' && carrierId ? carrierId : undefined,
+          occurredAt: occurredAt ? new Date(occurredAt).toISOString() : undefined,
           visibleToClient: true,
         },
       }),
@@ -587,6 +665,29 @@ function TransitionModal({
           )}
         </div>
       )}
+      <div className="field">
+        <label>Lieu / pays actuel du colis</label>
+        <input
+          value={locationLabel}
+          onChange={(e) => setLocationLabel(e.target.value)}
+          placeholder="ex. Douane de Cotonou, Dubaï…"
+        />
+      </div>
+      {to === 'EN_TRANSIT' && (
+        <div className="field">
+          <label>Compagnie de transport</label>
+          <select value={carrierId} onChange={(e) => setCarrierId(e.target.value)}>
+            <option value="">—</option>
+            {(carriers.data ?? []).map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      <div className="field">
+        <label>Date/heure réelle (si différente de maintenant)</label>
+        <input type="datetime-local" value={occurredAt} onChange={(e) => setOccurredAt(e.target.value)} />
+      </div>
       <div className="field">
         <label>Commentaire</label>
         <input value={note} onChange={(e) => setNote(e.target.value)} />

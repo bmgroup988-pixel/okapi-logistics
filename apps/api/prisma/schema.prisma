@@ -541,6 +541,9 @@ model Parcel {
   /// colis walk-in classique enregistré en agence.
   supplierId            String?              @map("supplier_id") @db.Uuid
   shipmentId            String?              @map("shipment_id") @db.Uuid
+  /// Compagnie de transport sous-traitée pour l'expédition — renseignée à la
+  /// transition EN_TRANSIT, jamais obligatoire à l'enregistrement.
+  carrierId             String?              @map("carrier_id") @db.Uuid
   transportMode         TransportMode        @map("transport_mode")
   weightKg              Decimal              @map("weight_kg") @db.Decimal(10, 2)
   contentNature         String               @map("content_nature")
@@ -576,6 +579,7 @@ model Parcel {
   deliveryPartner     DeliveryPartner?     @relation(fields: [deliveryPartnerId], references: [id])
   supplier            Supplier?            @relation(fields: [supplierId], references: [id])
   shipment            Shipment?            @relation(fields: [shipmentId], references: [id])
+  carrier             Carrier?             @relation(fields: [carrierId], references: [id])
   registrationAgent   User                 @relation("ParcelRegistrationAgent", fields: [registrationAgentId], references: [id])
   originCity          City                 @relation("ParcelOriginCity", fields: [originCityId], references: [id])
   destinationCity     City                 @relation("ParcelDestinationCity", fields: [destinationCityId], references: [id])
@@ -1049,4 +1053,25 @@ model SupplierInvoiceLine {
 
   @@index([supplierInvoiceId])
   @@map("supplier_invoice_lines")
+}
+
+// ============================================ Compagnies de transport
+/// Compagnie avec laquelle Okapi Logistics sous-traite le transport principal
+/// (aérien/maritime) — distincte du `DeliveryPartner` (dernier kilomètre).
+/// Gérée uniquement par le super-admin ; visible en lecture par tout le
+/// personnel interne (agent, DAF, super-admin) au moment de l'expédition.
+model Carrier {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String
+  contactName  String?  @map("contact_name")
+  contactPhone String?  @map("contact_phone")
+  contactEmail String?  @map("contact_email")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdById  String?  @map("created_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  parcels Parcel[]
+
+  @@map("carriers")
 }

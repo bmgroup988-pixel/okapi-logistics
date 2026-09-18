@@ -19,6 +19,7 @@ const STRINGS: Record<string, Record<Locale, string>> = {
   'nav.deliveryPartners': { fr: 'Partenaires de livraison', en: 'Delivery partners', zh: '配送合作伙伴' },
   'nav.settlements': { fr: 'Réconciliation partenaires', en: 'Partner settlements', zh: '合作伙伴结算' },
   'nav.suppliers': { fr: 'Fournisseurs', en: 'Suppliers', zh: '供应商' },
+  'nav.carriers': { fr: 'Compagnies de transport', en: 'Carriers', zh: '承运公司' },
   'nav.supplierPortal': { fr: 'Mes expéditions', en: 'My shipments', zh: '我的货运' },
   'auth.login': { fr: 'Se connecter', en: 'Sign in', zh: '登录' },
   'auth.email': { fr: 'E-mail', en: 'Email', zh: '邮箱' },

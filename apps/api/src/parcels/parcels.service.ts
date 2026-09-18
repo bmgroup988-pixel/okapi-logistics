@@ -78,6 +78,13 @@ export class ParcelsService {
             err as Error,
           );
         }
+        // Notification client (+ fournisseur le cas échéant) à l'enregistrement,
+        // même trigger/gabarit que les transitions ultérieures — sans bloquer.
+        try {
+          await this.notifications.enqueueForParcel(parcel.id, 'STATUS_CHANGE');
+        } catch (err) {
+          this.logger.error(`Notification d'enregistrement différée pour ${parcel.trackingNumber}`, err as Error);
+        }
         return { status: 201, body: await this.toDetailDto(parcel.id) };
       },
     );
@@ -537,6 +544,19 @@ export class ParcelsService {
       });
     }
 
+    let resolvedCarrierId: string | null | undefined;
+    if (input.carrierId) {
+      const carrier = await this.prisma.carrier.findFirst({
+        where: { id: input.carrierId, isActive: true },
+      });
+      if (!carrier) {
+        throw new BadRequestException({
+          error: { code: API_ERROR_CODES.VALIDATION, message: 'Compagnie de transport invalide ou inactive' },
+        });
+      }
+      resolvedCarrierId = carrier.id;
+    }
+
     let resolvedDeliveryPartnerId: string | null | undefined;
     if (input.to === 'HANDED_TO_PARTNER') {
       const partner = await this.prisma.deliveryPartner.findFirst({
@@ -573,13 +593,16 @@ export class ParcelsService {
       }
     }
 
+    const occurredAt = input.occurredAt ? new Date(input.occurredAt) : new Date();
+
     await this.prisma.$transaction(async (tx) => {
       await tx.parcel.update({
         where: { id },
         data: {
           status: input.to,
-          deliveredAt: input.to === 'LIVRE' ? new Date() : undefined,
+          deliveredAt: input.to === 'LIVRE' ? occurredAt : undefined,
           deliveryPartnerId: resolvedDeliveryPartnerId ?? undefined,
+          carrierId: resolvedCarrierId ?? undefined,
           updatedById: user.id,
         },
       });
@@ -597,6 +620,7 @@ export class ParcelsService {
             : (input.note ?? null),
           visibleToClient: input.visibleToClient,
           createdById: user.id,
+          createdAt: occurredAt,
         },
       });
     });
@@ -731,6 +755,7 @@ export class ParcelsService {
         contacts: true,
         photos: { orderBy: [{ isPrimary: 'desc' }, { takenAt: 'asc' }] },
         events: { orderBy: { createdAt: 'asc' }, include: { createdBy: true, locationCity: true } },
+        carrier: true,
       },
     });
     const sender = p.contacts.find((c) => c.role === 'SENDER')!;
@@ -746,6 +771,8 @@ export class ParcelsService {
       recipient: contactDto(recipient),
       clientChannel: p.clientChannel,
       clientLocale: (p.clientLocale as ParcelDetailDto['clientLocale']) ?? 'fr',
+      carrierId: p.carrierId,
+      carrierName: p.carrier?.name ?? null,
       events: p.events.map((e) => ({
         id: e.id,
         status: e.status,

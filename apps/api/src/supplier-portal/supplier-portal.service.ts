@@ -13,6 +13,7 @@ import { AuditService } from '../audit/audit.service';
 import type { CurrentUser } from '../auth/current-user';
 import { currentSupplierId } from '../auth/scope';
 import { FxService } from '../fx/fx.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SequenceService } from '../sequences/sequence.service';
 import { SettingsService } from '../settings/settings.service';
@@ -32,6 +33,7 @@ export class SupplierPortalService {
     private readonly fx: FxService,
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Fournisseur rattaché au compte connecté — jamais null pour un rôle FOURNISSEUR valide. */
@@ -182,6 +184,9 @@ export class SupplierPortalService {
           consentAt: now,
           supplierId: supplier.id,
           shipmentId: shipment.id,
+          // WhatsApp est le canal principal des clients finaux de fournisseurs
+          // — docs/11. Sans téléphone destinataire, pas de canal (silencieux).
+          clientChannel: input.recipientPhone ? 'WHATSAPP' : undefined,
           createdById: user.id,
           contacts: {
             create: [
@@ -216,6 +221,13 @@ export class SupplierPortalService {
       requestId,
       after: { trackingNumber, shipmentId: shipment.id, supplierId: supplier.id },
     });
+
+    // Notifie le client final (WhatsApp) et le fournisseur — sans bloquer la création.
+    try {
+      await this.notifications.enqueueForParcel(parcel.id, 'STATUS_CHANGE');
+    } catch {
+      // best effort — la création du colis n'est jamais bloquée par l'échec d'une notification.
+    }
 
     return { id: parcel.id, trackingNumber: parcel.trackingNumber };
   }

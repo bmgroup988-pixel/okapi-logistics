@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../lib/api';
 import { useCityLookup } from '../lib/geo';
 
 /** Code ville + nom complet en gris, miniature — identification facile (ex. "FIH (Kinshasa)"). */
@@ -54,6 +56,54 @@ export function Money({ m }: { m: { amount: string; currency: string } | null | 
   return (
     <span className="mono">
       {m.amount} {m.currency}
+    </span>
+  );
+}
+
+interface CurrencyOptionRef {
+  code: string;
+  symbol: string;
+  isActive: boolean;
+}
+
+/**
+ * Montant avec menu déroulant de devise — conversion automatique au taux du
+ * jour, devise par défaut USD. Réutilisable partout où un solde/montant colis
+ * doit pouvoir être consulté dans une autre devise que celle de facturation.
+ */
+export function CurrencyAmount({
+  m,
+  defaultCurrency = 'USD',
+}: {
+  m: { amount: string; currency: string } | null | undefined;
+  defaultCurrency?: string;
+}) {
+  const [target, setTarget] = useState(defaultCurrency);
+  const currencies = useQuery({
+    queryKey: ['ref-currencies'],
+    queryFn: () => api<CurrencyOptionRef[]>('/reference/currencies'),
+    staleTime: 5 * 60 * 1000,
+  });
+  const needsConversion = !!m && target !== m.currency;
+  const converted = useQuery({
+    queryKey: ['fx-convert', m?.currency, target, m?.amount],
+    queryFn: () => api<{ amount: string }>('/exchange-rates', { query: { from: m!.currency, to: target, amount: m!.amount } }),
+    enabled: needsConversion,
+  });
+
+  if (!m) return <span>—</span>;
+  const display = needsConversion ? (converted.data?.amount ?? '…') : m.amount;
+
+  return (
+    <span className="currency-amount">
+      <b className="mono">{display} {target}</b>
+      <select value={target} onChange={(e) => setTarget(e.target.value)} aria-label="Devise d'affichage">
+        {(currencies.data ?? [])
+          .filter((c) => c.isActive)
+          .map((c) => (
+            <option key={c.code} value={c.code}>{c.code}</option>
+          ))}
+      </select>
     </span>
   );
 }

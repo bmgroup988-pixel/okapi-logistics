@@ -29,27 +29,12 @@ export class NotificationsService {
       include: {
         contacts: true,
         destinationCity: true,
+        supplier: true,
       },
     });
-    if (!parcel || !parcel.clientChannel) return;
-
-    const recipientContact = parcel.contacts.find((c) => c.role === 'RECIPIENT');
-    const recipient =
-      parcel.clientChannel === 'EMAIL'
-        ? recipientContact?.email
-        : recipientContact?.phone;
-    if (!recipient) {
-      this.logger.warn(`Notification ${trigger} ignorée : destinataire manquant (${parcel.trackingNumber})`);
-      return;
-    }
+    if (!parcel) return;
 
     const locale = resolveLocale(parcel.clientLocale);
-    const template = await this.prisma.notificationTemplate.findUnique({
-      where: {
-        trigger_channel_locale: { trigger, channel: parcel.clientChannel, locale },
-      },
-    });
-
     const trackingBase = this.config.get('PUBLIC_TRACKING_BASE_URL', { infer: true });
     const vars = {
       numero_suivi: parcel.trackingNumber,
@@ -60,13 +45,48 @@ export class NotificationsService {
       ...extraVars,
     };
 
-    const body = template ? renderTemplate(template.body, vars) : JSON.stringify(vars);
+    if (parcel.clientChannel) {
+      const recipientContact = parcel.contacts.find((c) => c.role === 'RECIPIENT');
+      const recipient =
+        parcel.clientChannel === 'EMAIL' ? recipientContact?.email : recipientContact?.phone;
+      if (!recipient) {
+        this.logger.warn(`Notification ${trigger} ignorée : destinataire manquant (${parcel.trackingNumber})`);
+      } else {
+        await this.createNotification(parcelId, trigger, parcel.clientChannel, locale, recipient, vars);
+      }
+    }
 
+    // Fournisseur d'une expédition groupée : notifié en plus du client final,
+    // sur WhatsApp (canal principal des fournisseurs) — docs/11.
+    if (parcel.supplier?.contactPhone) {
+      await this.createNotification(
+        parcelId,
+        trigger,
+        'WHATSAPP',
+        'fr',
+        parcel.supplier.contactPhone,
+        vars,
+      );
+    }
+  }
+
+  private async createNotification(
+    parcelId: string,
+    trigger: NotificationTrigger,
+    channel: 'SMS' | 'WHATSAPP' | 'EMAIL',
+    locale: 'fr' | 'en' | 'zh',
+    recipient: string,
+    vars: Record<string, string | number>,
+  ): Promise<void> {
+    const template = await this.prisma.notificationTemplate.findUnique({
+      where: { trigger_channel_locale: { trigger, channel, locale } },
+    });
+    const body = template ? renderTemplate(template.body, vars) : JSON.stringify(vars);
     await this.prisma.notification.create({
       data: {
         parcelId,
         trigger,
-        channel: parcel.clientChannel,
+        channel,
         templateId: template?.id ?? null,
         locale,
         recipient,
