@@ -55,7 +55,6 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
   AGENT_FRET: [
     'parcel:create',
     'parcel:read',
-    'parcel:update',
     'parcel:transition',
     'parcel:arrival:confirm',
     'parcel:deliver:confirm',
