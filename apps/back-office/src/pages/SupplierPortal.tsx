@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../lib/api';
+import { useAuth } from '../lib/auth';
 import { useCities } from '../lib/geo';
 import { ErrorText, Loading, Modal, Pill } from '../components/ui';
 import { useT } from '../lib/i18n';
@@ -47,6 +48,8 @@ function statusKind(s: Shipment['status']): string {
 
 function ShipmentDetailModal({ id, onClose }: { id: string; onClose: () => void }) {
   const qc = useQueryClient();
+  const { can } = useAuth();
+  const canManageParcels = can('supplier-parcel:create');
   const cities = useCities();
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
@@ -109,7 +112,7 @@ function ShipmentDetailModal({ id, onClose }: { id: string; onClose: () => void 
                 <th>Ville</th>
                 <th>Poids</th>
                 <th>Montant</th>
-                {isOpen && <th />}
+                {isOpen && canManageParcels && <th />}
               </tr>
             </thead>
             <tbody>
@@ -127,7 +130,7 @@ function ShipmentDetailModal({ id, onClose }: { id: string; onClose: () => void 
                   <td>
                     {p.amountDue} {p.currency}
                   </td>
-                  {isOpen && (
+                  {isOpen && canManageParcels && (
                     <td>
                       <button className="btn ghost" onClick={() => removeParcel.mutate(p.id)}>
                         Retirer
@@ -138,7 +141,7 @@ function ShipmentDetailModal({ id, onClose }: { id: string; onClose: () => void 
               ))}
               {s.parcels.length === 0 && (
                 <tr>
-                  <td colSpan={isOpen ? 6 : 5} className="muted">
+                  <td colSpan={isOpen && canManageParcels ? 6 : 5} className="muted">
                     Aucun colis pour l'instant.
                   </td>
                 </tr>
@@ -146,7 +149,14 @@ function ShipmentDetailModal({ id, onClose }: { id: string; onClose: () => void 
             </tbody>
           </table>
 
-          {isOpen && (
+          {isOpen && !canManageParcels && (
+            <p className="muted" style={{ fontSize: 13 }}>
+              L'ajout de colis depuis ce portail est temporairement désactivé. Déposez vos colis à
+              l'agence, votre interlocuteur les enregistrera dans cette expédition.
+            </p>
+          )}
+
+          {isOpen && canManageParcels && (
             <form
               className="grid2"
               onSubmit={(e) => {
