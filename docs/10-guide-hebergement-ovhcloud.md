@@ -178,19 +178,48 @@ authentification supplémentaire — sinon `docker compose pull` échoue côté 
 
 ## 11. Sauvegardes
 
-```bash
-# Sauvegarde quotidienne de la base (à placer en tâche cron)
-docker compose -f infra/docker-compose.prod.yml exec -T postgres \
-  pg_dump -U okapi okapi | gzip > /opt/backups/okapi-$(date +%F).sql.gz
+Script prêt à l'emploi : [`infra/backup.sh`](../infra/backup.sh) — sauvegarde PostgreSQL **et**
+MinIO (photos de colis, PDF), puis copie hors serveur si `rclone` est configuré.
 
-# Purge des sauvegardes de plus de 30 jours
-find /opt/backups -name "*.sql.gz" -mtime +30 -delete
+Installation (une fois) :
+
+```bash
+sudo crontab -e
+# ajouter :
+0 3 * * * /opt/okapi-logistics/infra/backup.sh >> /var/log/okapi-backup.log 2>&1
 ```
 
-Copier régulièrement `/opt/backups` hors du serveur (OVHcloud Object Storage, ou un simple
-`rsync` vers un autre serveur) — une sauvegarde qui reste sur la même machine ne protège pas d'une
-panne matérielle. **Tester la restauration** au moins une fois (critère de mise en service, docs/08
-§12).
+**Copie hors serveur** (fortement recommandée — une sauvegarde qui reste sur ce disque ne protège
+d'aucune panne matérielle ni piratage du serveur) via [rclone](https://rclone.org/) vers OVHcloud
+Object Storage :
+
+```bash
+# Installation de rclone
+curl https://rclone.org/install.sh | sudo bash
+
+# Configuration du remote (interactif) — choisir "s3", provider "Other",
+# renseigner l'endpoint et les identifiants du conteneur OVHcloud Object
+# Storage (Manager OVHcloud → Object Storage → conteneur → Utilisateurs S3)
+rclone config
+# Nommer le remote exactement "okapi-offsite" (attendu par backup.sh)
+```
+
+Une fois `okapi-offsite` configuré, `backup.sh` copie automatiquement chaque sauvegarde du jour
+vers `okapi-offsite:okapi-backups/` après l'avoir créée localement — sans configuration, cette
+étape est silencieusement sautée (avertissement dans les logs) et les sauvegardes restent
+uniquement locales.
+
+**Tester la restauration** au moins une fois (critère de mise en service, docs/08 §12) :
+
+```bash
+# PostgreSQL
+gunzip -c /opt/backups/okapi-pg-AAAA-MM-JJ.sql.gz | \
+  docker compose -f infra/docker-compose.prod.yml exec -T postgres psql -U okapi okapi
+
+# MinIO (restaure le volume complet — à faire conteneurs arrêtés)
+docker run --rm -v okapi-minio:/data -v /opt/backups:/backup alpine \
+  sh -c "cd /data && tar xzf /backup/okapi-minio-AAAA-MM-JJ.tar.gz"
+```
 
 ## 12. Observabilité minimale
 
