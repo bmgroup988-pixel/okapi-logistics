@@ -152,11 +152,15 @@ Puis créer le **premier compte super-administrateur** (pas de seed de démo en 
 directement en base ou via une petite commande dédiée à écrire si besoin (à ce stade, `seed.ts`
 insère des données de démonstration : ne pas l'exécuter en production).
 
-## 10. Automatiser les déploiements suivants (CI/CD)
+## 10. Déploiements automatiques (CI/CD)
 
-Le pipeline `.github/workflows/deploy.yml` est prêt mais **déclenché uniquement à la main**
-(`workflow_dispatch`) tant que ces secrets ne sont pas configurés dans GitHub
-(Settings → Secrets and variables → Actions) :
+Le pipeline `.github/workflows/deploy.yml` se déclenche **automatiquement dès que le workflow CI
+(`ci.yml`) termine avec succès sur `main`** (déploiement continu — un commit qui casse le lint, le
+typecheck, les tests ou le build n'est jamais déployé). `workflow_dispatch` reste disponible pour un
+redéploiement manuel ponctuel (`Actions` → `Deploy` → `Run workflow`), par exemple pour recréer les
+conteneurs sans nouveau commit.
+
+Nécessite ces secrets GitHub (Settings → Secrets and variables → Actions) :
 
 | Secret | Valeur |
 |--------|--------|
@@ -165,12 +169,12 @@ Le pipeline `.github/workflows/deploy.yml` est prêt mais **déclenché uniqueme
 | `SSH_PRIVATE_KEY` | Clé privée SSH dédiée au déploiement (**pas votre clé personnelle** — en générer une : `ssh-keygen -t ed25519 -f deploy_key`, ajouter la publique dans `~/.ssh/authorized_keys` du VPS) |
 
 Variables (Settings → Secrets and variables → Actions → **Variables**, pas secrets — valeurs non
-sensibles) : `VITE_API_BASE=https://api.okapilogistics.com/api/v1`,
-`NEXT_PUBLIC_API_BASE=https://api.okapilogistics.com/api/v1`.
+sensibles) : `VITE_API_BASE=https://api.okapi-logistics.com/api/v1`,
+`NEXT_PUBLIC_API_BASE=https://api.okapi-logistics.com/api/v1`.
 
-Une fois configuré : `Actions` → `Deploy` → `Run workflow`. Pour un déploiement automatique à chaque
-push sur `main`, ajouter `push: branches: [main]` au déclencheur du fichier (à faire seulement quand
-vous êtes à l'aise avec le pipeline manuel).
+Les images Docker publiées sur GitHub Container Registry (GHCR) doivent être **publiques** (Package
+settings → Danger Zone → Change visibility) pour que le VPS puisse les télécharger sans
+authentification supplémentaire — sinon `docker compose pull` échoue côté serveur.
 
 ## 11. Sauvegardes
 

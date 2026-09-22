@@ -1,11 +1,14 @@
 name: Deploy
 
-# Déclenchement MANUEL uniquement (workflow_dispatch) tant qu'aucun serveur
-# n'est provisionné — voir docs/10-guide-hebergement-ovhcloud.md. Une fois
-# le serveur prêt et les secrets GitHub configurés (SSH_HOST, SSH_USER,
-# SSH_PRIVATE_KEY), on peut ajouter un déclencheur `push: branches: [main]`
-# pour un déploiement continu automatique.
+# Déclenché automatiquement quand le workflow CI termine avec succès sur
+# main (déploiement continu — n'avance que si lint/typecheck/tests/build
+# sont verts, voir ci.yml). `workflow_dispatch` reste disponible pour un
+# redéploiement ponctuel (ex. recréer les conteneurs sans nouveau commit).
 on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -18,15 +21,22 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ghcr.io/${{ github.repository }}
+  # github.sha n'est pas fiable sur workflow_run (peut différer du commit qui
+  # a réellement passé la CI si main a avancé entre-temps) — on résout donc
+  # explicitement le sha à utiliser pour le checkout et le tag d'image.
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   build-and-push:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - name: Connexion au registre GHCR
         uses: docker/login-action@v3
@@ -41,7 +51,7 @@ jobs:
           context: .
           file: apps/api/Dockerfile
           push: true
-          tags: ${{ env.IMAGE_PREFIX }}-api:latest,${{ env.IMAGE_PREFIX }}-api:${{ github.sha }}
+          tags: ${{ env.IMAGE_PREFIX }}-api:latest,${{ env.IMAGE_PREFIX }}-api:${{ env.DEPLOY_SHA }}
 
       - name: Build & push — Back-office
         uses: docker/build-push-action@v6
@@ -51,7 +61,7 @@ jobs:
           push: true
           build-args: |
             VITE_API_BASE=${{ vars.VITE_API_BASE }}
-          tags: ${{ env.IMAGE_PREFIX }}-back-office:latest,${{ env.IMAGE_PREFIX }}-back-office:${{ github.sha }}
+          tags: ${{ env.IMAGE_PREFIX }}-back-office:latest,${{ env.IMAGE_PREFIX }}-back-office:${{ env.DEPLOY_SHA }}
 
       - name: Build & push — Suivi public
         uses: docker/build-push-action@v6
@@ -61,12 +71,12 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_API_BASE=${{ vars.NEXT_PUBLIC_API_BASE }}
-          tags: ${{ env.IMAGE_PREFIX }}-suivi-public:latest,${{ env.IMAGE_PREFIX }}-suivi-public:${{ github.sha }}
+          tags: ${{ env.IMAGE_PREFIX }}-suivi-public:latest,${{ env.IMAGE_PREFIX }}-suivi-public:${{ env.DEPLOY_SHA }}
 
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.environment || 'production' }}
     steps:
       - name: Se connecter au serveur et relancer les conteneurs
         uses: appleboy/ssh-action@v1
@@ -75,6 +85,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -euo pipefail
             cd /opt/okapi-logistics
             docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod pull
             docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod up -d
