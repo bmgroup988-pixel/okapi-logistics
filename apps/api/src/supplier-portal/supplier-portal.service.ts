@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import type { Supplier } from '@prisma/client';
 import {
   API_ERROR_CODES,
   composeShipmentCode,
@@ -53,6 +54,28 @@ export class SupplierPortalService {
     return supplier;
   }
 
+  /**
+   * Fournisseur ciblé explicitement par un membre du personnel interne
+   * (agent fret, DAF) agissant en son nom — ex. le fournisseur dépose ses
+   * colis physiquement à l'agence et n'utilise pas lui-même le portail.
+   * Restreint au périmètre agence de l'utilisateur (comme le reste de
+   * l'application), sauf portée globale (DAF/super-admin).
+   */
+  private async resolveSupplierForStaff(supplierId: string, user: CurrentUser): Promise<Supplier> {
+    const supplier = await this.prisma.supplier.findUnique({ where: { id: supplierId } });
+    if (!supplier || !supplier.isActive) {
+      throw new NotFoundException({
+        error: { code: API_ERROR_CODES.NOT_FOUND, message: 'Fournisseur introuvable ou désactivé' },
+      });
+    }
+    if (!user.scope.isGlobal && !user.scope.agencyIds.includes(supplier.defaultAgencyId)) {
+      throw new ForbiddenException({
+        error: { code: API_ERROR_CODES.FORBIDDEN, message: 'Fournisseur hors de votre périmètre agence' },
+      });
+    }
+    return supplier;
+  }
+
   private async requireOwnedShipment(shipmentId: string, supplierId: string) {
     const shipment = await this.prisma.shipment.findUnique({ where: { id: shipmentId } });
     if (!shipment || shipment.supplierId !== supplierId) {
@@ -61,9 +84,30 @@ export class SupplierPortalService {
     return shipment;
   }
 
+  /** Liste allégée des fournisseurs actifs du périmètre — pour le sélecteur côté personnel. */
+  async listSuppliersForStaff(user: CurrentUser) {
+    const where: Record<string, unknown> = { isActive: true };
+    if (!user.scope.isGlobal) where.defaultAgencyId = { in: user.scope.agencyIds };
+    const rows = await this.prisma.supplier.findMany({
+      where,
+      select: { id: true, code: true, name: true, defaultAgencyId: true },
+      orderBy: { name: 'asc' },
+    });
+    return rows;
+  }
+
   /* -------------------------------------------------------------- expéditions */
   async listShipments(user: CurrentUser) {
     const supplier = await this.requireSupplier(user);
+    return this.listShipmentsCore(supplier);
+  }
+
+  async listShipmentsForStaff(supplierId: string, user: CurrentUser) {
+    const supplier = await this.resolveSupplierForStaff(supplierId, user);
+    return this.listShipmentsCore(supplier);
+  }
+
+  private async listShipmentsCore(supplier: Supplier) {
     const rows = await this.prisma.shipment.findMany({
       where: { supplierId: supplier.id },
       orderBy: { openedAt: 'desc' },
@@ -73,6 +117,15 @@ export class SupplierPortalService {
 
   async openShipment(user: CurrentUser, requestId?: string | null) {
     const supplier = await this.requireSupplier(user);
+    return this.openShipmentCore(supplier, user, requestId);
+  }
+
+  async openShipmentForStaff(supplierId: string, user: CurrentUser, requestId?: string | null) {
+    const supplier = await this.resolveSupplierForStaff(supplierId, user);
+    return this.openShipmentCore(supplier, user, requestId);
+  }
+
+  private async openShipmentCore(supplier: Supplier, user: CurrentUser, requestId?: string | null) {
     const now = new Date();
     const seq = await this.sequences.next('shipment', `supplier:${supplier.code}`, trackingPeriodKey(now));
     const code = composeShipmentCode({ at: now, seq });
@@ -99,6 +152,15 @@ export class SupplierPortalService {
 
   async getShipmentDetail(shipmentId: string, user: CurrentUser) {
     const supplier = await this.requireSupplier(user);
+    return this.getShipmentDetailCore(supplier, shipmentId);
+  }
+
+  async getShipmentDetailForStaff(supplierId: string, shipmentId: string, user: CurrentUser) {
+    const supplier = await this.resolveSupplierForStaff(supplierId, user);
+    return this.getShipmentDetailCore(supplier, shipmentId);
+  }
+
+  private async getShipmentDetailCore(supplier: Supplier, shipmentId: string) {
     const shipment = await this.requireOwnedShipment(shipmentId, supplier.id);
     const parcels = await this.prisma.parcel.findMany({
       where: { shipmentId: shipment.id },
@@ -133,6 +195,27 @@ export class SupplierPortalService {
     requestId?: string | null,
   ) {
     const supplier = await this.requireSupplier(user);
+    return this.addParcelCore(supplier, shipmentId, input, user, requestId);
+  }
+
+  async addParcelForStaff(
+    supplierId: string,
+    shipmentId: string,
+    input: SupplierPortalParcelCreateInput,
+    user: CurrentUser,
+    requestId?: string | null,
+  ) {
+    const supplier = await this.resolveSupplierForStaff(supplierId, user);
+    return this.addParcelCore(supplier, shipmentId, input, user, requestId);
+  }
+
+  private async addParcelCore(
+    supplier: Supplier,
+    shipmentId: string,
+    input: SupplierPortalParcelCreateInput,
+    user: CurrentUser,
+    requestId?: string | null,
+  ) {
     const shipment = await this.requireOwnedShipment(shipmentId, supplier.id);
     if (shipment.status !== 'OUVERTE') {
       throw new BadRequestException({
@@ -234,6 +317,27 @@ export class SupplierPortalService {
 
   async removeParcel(shipmentId: string, parcelId: string, user: CurrentUser, requestId?: string | null) {
     const supplier = await this.requireSupplier(user);
+    return this.removeParcelCore(supplier, shipmentId, parcelId, user, requestId);
+  }
+
+  async removeParcelForStaff(
+    supplierId: string,
+    shipmentId: string,
+    parcelId: string,
+    user: CurrentUser,
+    requestId?: string | null,
+  ) {
+    const supplier = await this.resolveSupplierForStaff(supplierId, user);
+    return this.removeParcelCore(supplier, shipmentId, parcelId, user, requestId);
+  }
+
+  private async removeParcelCore(
+    supplier: Supplier,
+    shipmentId: string,
+    parcelId: string,
+    user: CurrentUser,
+    requestId?: string | null,
+  ) {
     const shipment = await this.requireOwnedShipment(shipmentId, supplier.id);
     if (shipment.status !== 'OUVERTE') {
       throw new BadRequestException({
@@ -275,6 +379,15 @@ export class SupplierPortalService {
   /* -------------------------------------------------------------- clôture */
   async closeShipment(shipmentId: string, user: CurrentUser, requestId?: string | null) {
     const supplier = await this.requireSupplier(user);
+    return this.closeShipmentCore(supplier, shipmentId, user, requestId);
+  }
+
+  async closeShipmentForStaff(supplierId: string, shipmentId: string, user: CurrentUser, requestId?: string | null) {
+    const supplier = await this.resolveSupplierForStaff(supplierId, user);
+    return this.closeShipmentCore(supplier, shipmentId, user, requestId);
+  }
+
+  private async closeShipmentCore(supplier: Supplier, shipmentId: string, user: CurrentUser, requestId?: string | null) {
     const shipment = await this.requireOwnedShipment(shipmentId, supplier.id);
     if (shipment.status !== 'OUVERTE') {
       throw new BadRequestException({

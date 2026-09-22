@@ -67,6 +67,14 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
     'fx:read',
     'config:read',
     'groupage:manage',
+    // Enregistrement de colis pour un fournisseur qui dépose physiquement à
+    // l'agence sans utiliser lui-même le portail — mêmes permissions que le
+    // portail self-service (FOURNISSEUR), exercées pour un fournisseur choisi
+    // explicitement (pas d'auto-facturation : simple enregistrement).
+    'shipment:read',
+    'shipment:create',
+    'shipment:close',
+    'supplier-parcel:create',
   ],
   ADMIN_DAF: [
     // Secours : le DAF peut enregistrer un colis si les agents sont
@@ -92,6 +100,10 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
     'settlement:write',
     'supplier:manage',
     'groupage:manage',
+    'shipment:read',
+    'shipment:create',
+    'shipment:close',
+    'supplier-parcel:create',
   ],
   SUPER_ADMIN: [...PERMISSIONS],
   /** Compte externe (portail self-service) — jamais de permission interne. */

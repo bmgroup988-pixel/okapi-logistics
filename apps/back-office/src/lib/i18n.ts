@@ -9,6 +9,7 @@ const STRINGS: Record<string, Record<Locale, string>> = {
   'nav.new': { fr: '＋ Nouveau colis', en: '＋ New parcel', zh: '＋ 新包裹', sw: '＋ Mzigo mpya', ln: '＋ Kolo ya sika' },
   'nav.parcels': { fr: 'Colis', en: 'Parcels', zh: '包裹', sw: 'Mizigo', ln: 'Bakolo' },
   'nav.groupages': { fr: 'Groupages', en: 'Consolidated shipments', zh: '拼货组', sw: 'Vikundi vya mizigo', ln: 'Bagroupage' },
+  'nav.supplierParcels': { fr: 'Colis fournisseur', en: 'Supplier parcels', zh: '供应商包裹', sw: 'Mizigo ya wasambazaji', ln: 'Bakolo ya bapesi' },
   'nav.admin': { fr: 'Administration', en: 'Administration', zh: '管理', sw: 'Utawala', ln: 'Boyangeli' },
   'nav.reports': { fr: 'Rapports', en: 'Reports', zh: '报表', sw: 'Ripoti', ln: 'Balapolo' },
   'nav.tariffs': { fr: 'Tarifs (prix/kg)', en: 'Tariffs (price/kg)', zh: '价格/公斤', sw: 'Bei (bei/kg)', ln: 'Ntalo (ntalo/kg)' },
