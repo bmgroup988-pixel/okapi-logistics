@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import {
   API_ERROR_CODES,
   composeGroupageCode,
+  humanizeNameKey,
   trackingPeriodKey,
   type GroupageAddParcelInput,
   type GroupageCreateInput,
@@ -15,7 +16,10 @@ import { SequenceService } from '../sequences/sequence.service';
  * Groupage — regroupe des colis (walk-in et/ou fournisseur) pour un même
  * trajet, pour le suivi logistique uniquement (colis par colis : parti ou
  * pas encore) — indépendant de la facturation, déjà réglée par colis à
- * l'enregistrement. Demande produit du 2026-09-22.
+ * l'enregistrement. Organisé par agence de DESTINATION ; un colis d'une
+ * destination différente peut y être intégré (décision administrative,
+ * jamais de répercussion sur le colis ou sa propre destination). Demande
+ * produit du 2026-09-22.
  */
 @Injectable()
 export class GroupagesService {
@@ -27,11 +31,11 @@ export class GroupagesService {
 
   async list(user: CurrentUser, status?: string) {
     const where: Record<string, unknown> = {};
-    if (!user.scope.isGlobal) where.originAgencyId = { in: user.scope.agencyIds };
+    if (!user.scope.isGlobal) where.destinationAgencyId = { in: user.scope.agencyIds };
     if (status) where.status = status;
     const rows = await this.prisma.groupage.findMany({
       where,
-      include: { originAgency: { select: { name: true } } },
+      include: { destinationAgency: { select: { name: true } } },
       orderBy: { openedAt: 'desc' },
     });
     return rows.map(toGroupageDto);
@@ -41,7 +45,7 @@ export class GroupagesService {
     const row = await this.prisma.groupage.findUnique({
       where: { id },
       include: {
-        originAgency: { select: { name: true } },
+        destinationAgency: { select: { name: true } },
         parcels: {
           include: {
             destinationCity: { select: { code: true, nameKey: true } },
@@ -62,7 +66,7 @@ export class GroupagesService {
         trackingNumber: p.trackingNumber,
         status: p.status,
         destinationCityCode: p.destinationCity.code,
-        destinationCityName: p.destinationCity.nameKey,
+        destinationCityName: humanizeNameKey(p.destinationCity.nameKey),
         weightKg: p.weightKg.toString(),
         recipientName: p.contacts[0]?.name ?? '',
         supplierCode: p.supplier?.code ?? null,
@@ -70,8 +74,37 @@ export class GroupagesService {
     };
   }
 
+  /**
+   * Colis pouvant être ajoutés à un groupage — non annulés, pas déjà dans un
+   * groupage. Volontairement pas restreint à la destination de ce groupage
+   * ni à l'agence de l'utilisateur : le mélange de destinations est une
+   * décision administrative assumée (combler un vide, urgence).
+   */
+  async listAvailableParcels() {
+    const rows = await this.prisma.parcel.findMany({
+      where: { groupageId: null, status: { not: 'ANNULE' } },
+      select: {
+        id: true,
+        trackingNumber: true,
+        weightKg: true,
+        destinationCity: { select: { code: true, nameKey: true } },
+        contacts: { where: { role: 'RECIPIENT' }, select: { name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    });
+    return rows.map((p) => ({
+      id: p.id,
+      trackingNumber: p.trackingNumber,
+      weightKg: p.weightKg.toString(),
+      destinationCityCode: p.destinationCity.code,
+      destinationCityName: humanizeNameKey(p.destinationCity.nameKey),
+      recipientName: p.contacts[0]?.name ?? '',
+    }));
+  }
+
   async create(input: GroupageCreateInput, user: CurrentUser, requestId?: string | null) {
-    const agency = await this.prisma.agency.findUnique({ where: { id: input.originAgencyId } });
+    const agency = await this.prisma.agency.findUnique({ where: { id: input.destinationAgencyId } });
     if (!agency) {
       throw new BadRequestException({ error: { code: API_ERROR_CODES.VALIDATION, message: 'Agence introuvable' } });
     }
@@ -81,11 +114,11 @@ export class GroupagesService {
     const groupage = await this.prisma.groupage.create({
       data: {
         code,
-        originAgencyId: input.originAgencyId,
+        destinationAgencyId: input.destinationAgencyId,
         note: input.note ?? null,
         openedById: user.id,
       },
-      include: { originAgency: { select: { name: true } } },
+      include: { destinationAgency: { select: { name: true } } },
     });
     await this.audit.record({
       action: 'CREATE',
@@ -93,16 +126,14 @@ export class GroupagesService {
       entityId: groupage.id,
       actorUserId: user.id,
       requestId,
-      after: { code: groupage.code, originAgencyId: input.originAgencyId },
+      after: { code: groupage.code, destinationAgencyId: input.destinationAgencyId },
     });
     return toGroupageDto(groupage);
   }
 
   async addParcel(id: string, input: GroupageAddParcelInput, user: CurrentUser, requestId?: string | null) {
     await this.requireOpenGroupage(id);
-    const parcel = await this.prisma.parcel.findUnique({
-      where: { trackingNumber: input.trackingNumber.trim().toUpperCase() },
-    });
+    const parcel = await this.prisma.parcel.findUnique({ where: { id: input.parcelId } });
     if (!parcel) {
       throw new NotFoundException({ error: { code: API_ERROR_CODES.NOT_FOUND, message: 'Colis introuvable' } });
     }
@@ -170,7 +201,7 @@ export class GroupagesService {
     const updated = await this.prisma.groupage.update({
       where: { id },
       data: { status: 'CLOTURE', parcelCount, closedById: user.id, closedAt: new Date() },
-      include: { originAgency: { select: { name: true } } },
+      include: { destinationAgency: { select: { name: true } } },
     });
     await this.audit.record({
       action: 'UPDATE',
@@ -202,8 +233,8 @@ function toGroupageDto(row: {
   id: string;
   code: string;
   status: string;
-  originAgencyId: string;
-  originAgency: { name: string };
+  destinationAgencyId: string;
+  destinationAgency: { name: string };
   parcelCount: number;
   totalWeightKg: { toString(): string };
   note: string | null;
@@ -214,8 +245,8 @@ function toGroupageDto(row: {
     id: row.id,
     code: row.code,
     status: row.status as 'OUVERT' | 'CLOTURE' | 'ANNULE',
-    originAgencyId: row.originAgencyId,
-    originAgencyName: row.originAgency.name,
+    destinationAgencyId: row.destinationAgencyId,
+    destinationAgencyName: row.destinationAgency.name,
     parcelCount: row.parcelCount,
     totalWeightKg: row.totalWeightKg.toString(),
     note: row.note,

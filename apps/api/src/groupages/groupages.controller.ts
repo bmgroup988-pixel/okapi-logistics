@@ -22,6 +22,12 @@ export class GroupagesController {
     return this.groupages.list(user, status);
   }
 
+  // Doit précéder `:id` pour ne pas être capturée par ce paramètre de route.
+  @Get('parcels/available')
+  listAvailableParcels() {
+    return this.groupages.listAvailableParcels();
+  }
+
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) id: string) {
     return this.groupages.get(id);

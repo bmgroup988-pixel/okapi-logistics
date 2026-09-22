@@ -339,13 +339,13 @@ export const supplierPortalActivateSchema = z.object({
 export type SupplierPortalActivateInput = z.infer<typeof supplierPortalActivateSchema>;
 
 export const groupageCreateSchema = z.object({
-  originAgencyId: uuid,
+  destinationAgencyId: uuid,
   note: z.string().max(500).optional().nullable(),
 });
 export type GroupageCreateInput = z.infer<typeof groupageCreateSchema>;
 
 export const groupageAddParcelSchema = z.object({
-  trackingNumber: z.string().min(1).max(40),
+  parcelId: uuid,
 });
 export type GroupageAddParcelInput = z.infer<typeof groupageAddParcelSchema>;
 

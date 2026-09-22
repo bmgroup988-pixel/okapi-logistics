@@ -257,7 +257,7 @@ model Agency {
   userRoles            UserRole[]
   suppliers            Supplier[]
   shipmentsOrigin      Shipment[]
-  groupagesOrigin      Groupage[]
+  groupagesDestination Groupage[]
 
   @@index([countryId])
   @@map("agencies")
@@ -1024,25 +1024,32 @@ model Shipment {
 /// arrivés vs pas encore). Sans lien avec la facturation, déjà réglée par
 /// colis à l'enregistrement (`Parcel.amountDue`) — contrairement à
 /// `Shipment`, un `Groupage` ne génère jamais de facture.
+///
+/// Organisé par agence de DESTINATION (pas de départ) — décision purement
+/// administrative : un colis peut être intégré à un groupage dont la
+/// destination diffère de la sienne propre (ex. un colis à destination de
+/// Lubumbashi ajouté au groupage FIH pour combler un vide ou une urgence),
+/// sans que cela n'affecte jamais `Parcel.destinationCityId` ni son propre
+/// numéro de suivi — demande produit du 2026-09-22.
 model Groupage {
-  id             String         @id @default(uuid()) @db.Uuid
+  id                  String         @id @default(uuid()) @db.Uuid
   /// GRP-AAMM-NNNN, séquentiel global mensuel.
-  code           String         @unique
-  originAgencyId String         @map("origin_agency_id") @db.Uuid
-  status         GroupageStatus @default(OUVERT)
+  code                String         @unique
+  destinationAgencyId String         @map("destination_agency_id") @db.Uuid
+  status              GroupageStatus @default(OUVERT)
   /// Dénormalisé pour l'affichage — source de vérité = COUNT(parcels).
-  parcelCount    Int            @default(0) @map("parcel_count")
-  totalWeightKg  Decimal        @default(0) @map("total_weight_kg") @db.Decimal(10, 2)
-  note           String?
-  openedById     String?        @map("opened_by") @db.Uuid
-  closedById     String?        @map("closed_by") @db.Uuid
-  openedAt       DateTime       @default(now()) @map("opened_at") @db.Timestamptz(6)
-  closedAt       DateTime?      @map("closed_at") @db.Timestamptz(6)
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  parcelCount         Int            @default(0) @map("parcel_count")
+  totalWeightKg       Decimal        @default(0) @map("total_weight_kg") @db.Decimal(10, 2)
+  note                String?
+  openedById          String?        @map("opened_by") @db.Uuid
+  closedById          String?        @map("closed_by") @db.Uuid
+  openedAt            DateTime       @default(now()) @map("opened_at") @db.Timestamptz(6)
+  closedAt            DateTime?      @map("closed_at") @db.Timestamptz(6)
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  originAgency Agency   @relation(fields: [originAgencyId], references: [id])
-  parcels      Parcel[]
+  destinationAgency Agency   @relation(fields: [destinationAgencyId], references: [id])
+  parcels           Parcel[]
 
   @@index([status, openedAt])
   @@map("groupages")

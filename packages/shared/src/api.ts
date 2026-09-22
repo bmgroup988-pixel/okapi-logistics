@@ -246,8 +246,9 @@ export interface GroupageDto {
   id: string;
   code: string; // GRP-AAMM-NNNN
   status: 'OUVERT' | 'CLOTURE' | 'ANNULE';
-  originAgencyId: string;
-  originAgencyName: string;
+  /** Agence de DESTINATION — un colis d'une autre destination peut quand même y être ajouté (décision administrative). */
+  destinationAgencyId: string;
+  destinationAgencyName: string;
   parcelCount: number;
   totalWeightKg: string;
   note: string | null;
@@ -269,4 +270,14 @@ export interface GroupageParcelDto {
 
 export interface GroupageDetailDto extends GroupageDto {
   parcels: GroupageParcelDto[];
+}
+
+/** Colis éligible à l'ajout dans un groupage — non annulé, pas déjà groupé. */
+export interface GroupageAvailableParcelDto {
+  id: string;
+  trackingNumber: string;
+  weightKg: string;
+  destinationCityCode: string;
+  destinationCityName: string;
+  recipientName: string;
 }

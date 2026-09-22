@@ -445,7 +445,8 @@ export function SupplierPortal() {
 
 ## 9. Groupage — suivi de transit indépendant de la facturation
 
-> **État : implémenté** (`Groupage`, 2026-09-22).
+> **État : implémenté** (`Groupage`, 2026-09-22 ; agence de destination + sélection par menu
+> déroulant, 2026-09-22).
 
 Besoin distinct de l'expédition fournisseur (§1-8) : regrouper des colis **quelle que soit leur
 origine** (walk-in enregistré en agence, et/ou fournisseur) sous un même **numéro de groupage**,
@@ -458,15 +459,22 @@ Différence-clé avec `Shipment` : **aucune facturation** n'est rattachée à un
 (`Parcel.amountDue`) — le groupage n'est qu'un regroupement logistique, formé parfois plusieurs
 jours après le dépôt des colis.
 
+Un groupage est organisé par **agence de DESTINATION** (pas de départ) — la numérotation des colis
+étant déjà propre à chaque ville de destination (`tracking.ts`, compteur par `destinationCityCode`).
+**Un colis d'une destination différente peut être intégré à un groupage d'une autre destination**
+(ex. un colis pour Lubumbashi ou Kolwezi ajouté au groupage FIH) — décision purement administrative
+pour combler un vide ou répondre à une urgence, qui **ne modifie jamais** `Parcel.destinationCityId`
+ni le numéro de suivi du colis : seul `Parcel.groupageId` change.
+
 ```
 Groupage
-  id               uuid PK
-  code             text unique       -- GRP-AAMM-NNNN, séquentiel global mensuel
-  originAgencyId   uuid FK -> Agency
-  status           GroupageStatus     -- OUVERT | CLOTURE | ANNULE
-  parcelCount      int default 0      -- dénormalisé, recalculé à la clôture
-  totalWeightKg    decimal(10,2) default 0
-  note             text?
+  id                   uuid PK
+  code                 text unique       -- GRP-AAMM-NNNN, séquentiel global mensuel
+  destinationAgencyId  uuid FK -> Agency
+  status               GroupageStatus     -- OUVERT | CLOTURE | ANNULE
+  parcelCount          int default 0      -- dénormalisé, recalculé à la clôture
+  totalWeightKg        decimal(10,2) default 0
+  note                 text?
   openedById / closedById
   openedAt / closedAt
   createdAt / updatedAt
@@ -481,9 +489,10 @@ Endpoints (`groupage:manage` — agent fret, DAF, super-admin ; **pas** le rôle
 | Méthode | Route | Effet |
 |---|---|---|
 | `GET` | `/groupages` | Liste, filtrable par `status`, restreinte au périmètre agence de l'utilisateur. |
+| `GET` | `/groupages/parcels/available` | Colis sélectionnables (non annulés, pas déjà dans un groupage, toutes destinations confondues) — alimente le menu déroulant côté back-office, pas de numéro de suivi à taper à la main. |
 | `GET` | `/groupages/:id` | Détail + colis membres avec leur statut individuel (`ENREGISTRE`…`LIVRE`). |
-| `POST` | `/groupages` | Ouvre un groupage (agence de départ, note libre). |
-| `POST` | `/groupages/:id/parcels` | Ajoute un colis par numéro de suivi (rejette un colis annulé ou déjà dans un autre groupage). |
+| `POST` | `/groupages` | Ouvre un groupage (agence de destination, note libre). |
+| `POST` | `/groupages/:id/parcels` | Ajoute un colis par `parcelId` (rejette un colis annulé ou déjà dans un autre groupage). |
 | `DELETE` | `/groupages/:id/parcels/:parcelId` | Retire un colis (uniquement tant que `OUVERT`). |
 | `POST` | `/groupages/:id/close` | Clôture (`CLOTURE`), fige `parcelCount`. |
 

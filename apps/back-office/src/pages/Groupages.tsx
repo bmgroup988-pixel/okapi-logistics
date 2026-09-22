@@ -8,8 +8,8 @@ interface GroupageSummary {
   id: string;
   code: string;
   status: 'OUVERT' | 'CLOTURE' | 'ANNULE';
-  originAgencyId: string;
-  originAgencyName: string;
+  destinationAgencyId: string;
+  destinationAgencyName: string;
   parcelCount: number;
   totalWeightKg: string;
   note: string | null;
@@ -32,6 +32,15 @@ interface GroupageDetail extends GroupageSummary {
   parcels: GroupageParcel[];
 }
 
+interface AvailableParcel {
+  id: string;
+  trackingNumber: string;
+  weightKg: string;
+  destinationCityCode: string;
+  destinationCityName: string;
+  recipientName: string;
+}
+
 interface Agency {
   id: string;
   code: string;
@@ -44,7 +53,7 @@ function groupageStatusKind(s: string): string {
 
 function CreateGroupageModal({ onClose }: { onClose: (id?: string) => void }) {
   const agencies = useQuery({ queryKey: ['reference-agencies'], queryFn: () => api<Agency[]>('/reference/agencies') });
-  const [originAgencyId, setOriginAgencyId] = useState('');
+  const [destinationAgencyId, setDestinationAgencyId] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<unknown>(null);
 
@@ -52,7 +61,7 @@ function CreateGroupageModal({ onClose }: { onClose: (id?: string) => void }) {
     mutationFn: () =>
       api<GroupageSummary>('/groupages', {
         method: 'POST',
-        body: { originAgencyId, note: note || undefined },
+        body: { destinationAgencyId, note: note || undefined },
       }),
     onSuccess: (g) => onClose(g.id),
     onError: setError,
@@ -68,8 +77,8 @@ function CreateGroupageModal({ onClose }: { onClose: (id?: string) => void }) {
         style={{ display: 'grid', gap: 8 }}
       >
         <div className="field">
-          <label>Agence de départ</label>
-          <select value={originAgencyId} onChange={(e) => setOriginAgencyId(e.target.value)} required>
+          <label>Agence de destination</label>
+          <select value={destinationAgencyId} onChange={(e) => setDestinationAgencyId(e.target.value)} required>
             <option value="">— Choisir —</option>
             {agencies.data?.map((a) => (
               <option key={a.id} value={a.id}>
@@ -83,7 +92,7 @@ function CreateGroupageModal({ onClose }: { onClose: (id?: string) => void }) {
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex. vol Cotonou → Kinshasa du 25/09" />
         </div>
         <ErrorText error={error} />
-        <button className="btn primary" type="submit" disabled={create.isPending || !originAgencyId}>
+        <button className="btn primary" type="submit" disabled={create.isPending || !destinationAgencyId}>
           Créer
         </button>
       </form>
@@ -113,7 +122,9 @@ export function Groupages() {
       <p className="muted">
         Regroupez des colis (walk-in et/ou fournisseur) pour un même trajet et suivez précisément
         lesquels sont partis, arrivés, ou pas encore expédiés — sans impact sur la facturation, déjà
-        réglée à l'enregistrement de chaque colis.
+        réglée à l'enregistrement de chaque colis. Un colis d'une autre destination peut être
+        intégré à un groupage pour combler un vide ou une urgence, sans effet sur sa propre
+        destination.
       </p>
 
       {groupages.isLoading && <Loading />}
@@ -122,7 +133,7 @@ export function Groupages() {
         <thead>
           <tr>
             <th>Code</th>
-            <th>Agence de départ</th>
+            <th>Agence de destination</th>
             <th>Statut</th>
             <th>Colis</th>
             <th>Poids</th>
@@ -133,7 +144,7 @@ export function Groupages() {
           {groupages.data?.map((g) => (
             <tr key={g.id} className="clickable" onClick={() => navigate(`/groupages/${g.id}`)}>
               <td className="mono">{g.code}</td>
-              <td>{g.originAgencyName}</td>
+              <td>{g.destinationAgencyName}</td>
               <td>
                 <Pill kind={groupageStatusKind(g.status)}>{g.status}</Pill>
               </td>
@@ -168,7 +179,7 @@ export function Groupages() {
 export function GroupageDetail() {
   const { id = '' } = useParams();
   const qc = useQueryClient();
-  const [trackingNumber, setTrackingNumber] = useState('');
+  const [parcelId, setParcelId] = useState('');
   const [error, setError] = useState<unknown>(null);
 
   const groupage = useQuery({
@@ -176,12 +187,20 @@ export function GroupageDetail() {
     queryFn: () => api<GroupageDetail>(`/groupages/${id}`),
   });
 
-  const refresh = () => void qc.invalidateQueries({ queryKey: ['groupage', id] });
+  const availableParcels = useQuery({
+    queryKey: ['groupage-available-parcels'],
+    queryFn: () => api<AvailableParcel[]>('/groupages/parcels/available'),
+  });
+
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ['groupage', id] });
+    void qc.invalidateQueries({ queryKey: ['groupage-available-parcels'] });
+  };
 
   const addParcel = useMutation({
-    mutationFn: () => api(`/groupages/${id}/parcels`, { method: 'POST', body: { trackingNumber } }),
+    mutationFn: () => api(`/groupages/${id}/parcels`, { method: 'POST', body: { parcelId } }),
     onSuccess: () => {
-      setTrackingNumber('');
+      setParcelId('');
       setError(null);
       refresh();
     },
@@ -189,7 +208,7 @@ export function GroupageDetail() {
   });
 
   const removeParcel = useMutation({
-    mutationFn: (parcelId: string) => api(`/groupages/${id}/parcels/${parcelId}`, { method: 'DELETE' }),
+    mutationFn: (removedId: string) => api(`/groupages/${id}/parcels/${removedId}`, { method: 'DELETE' }),
     onSuccess: refresh,
   });
 
@@ -223,7 +242,7 @@ export function GroupageDetail() {
         )}
       </div>
       <p className="muted">
-        {g.originAgencyName} · {g.parcelCount} colis · {g.totalWeightKg} kg
+        {g.destinationAgencyName} · {g.parcelCount} colis · {g.totalWeightKg} kg
         {g.note ? ` · ${g.note}` : ''}
       </p>
 
@@ -232,24 +251,33 @@ export function GroupageDetail() {
           Suivi d'arrivée — {arrivedCount} / {g.parcels.length} arrivés
         </h3>
         {isOpen && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              addParcel.mutate();
-            }}
-            className="row"
-            style={{ marginBottom: 12 }}
-          >
-            <input
-              placeholder="Numéro de suivi (ex. OKP2209260043FIH)"
-              value={trackingNumber}
-              onChange={(e) => setTrackingNumber(e.target.value.toUpperCase())}
-              required
-            />
-            <button className="btn primary" type="submit" disabled={addParcel.isPending || !trackingNumber}>
-              + Ajouter
-            </button>
-          </form>
+          <>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                addParcel.mutate();
+              }}
+              className="row"
+              style={{ marginBottom: 4 }}
+            >
+              <select value={parcelId} onChange={(e) => setParcelId(e.target.value)} required>
+                <option value="">— Choisir un colis —</option>
+                {availableParcels.data?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.trackingNumber} · {p.destinationCityCode} {p.destinationCityName} · {p.recipientName} · {p.weightKg} kg
+                  </option>
+                ))}
+              </select>
+              <button className="btn primary" type="submit" disabled={addParcel.isPending || !parcelId}>
+                + Ajouter
+              </button>
+            </form>
+            <p className="muted" style={{ fontSize: 12, marginTop: 0, marginBottom: 12 }}>
+              Seuls les colis enregistrés, non annulés et pas déjà dans un autre groupage
+              apparaissent ici — n'importe quelle destination, y compris différente de celle du
+              groupage (décision administrative sans effet sur le colis).
+            </p>
+          </>
         )}
         <ErrorText error={error} />
         <table className="data">
