@@ -32,7 +32,7 @@ export interface Branding {
   contactWhatsapp: string | null;
   website: string | null;
   social: { facebook: string | null; instagram: string | null; tiktok: string | null; x: string | null };
-  slogans: { fr: string; en: string; zh: string };
+  slogans: { fr: string; en: string; zh: string; sw?: string; ln?: string };
   locales: string[];
 }
 
@@ -87,8 +87,10 @@ export async function fetchBranding(): Promise<Branding> {
       fr: 'Le futur du commerce africain',
       en: 'The future of African trade',
       zh: '非洲贸易的未来',
+      sw: 'Mustakabali wa biashara ya Afrika',
+      ln: 'Avenir ya mombongo ya Afrika',
     },
-    locales: ['fr', 'en', 'zh'],
+    locales: ['fr', 'en', 'zh', 'sw', 'ln'],
   };
   try {
     const res = await fetch(`${API_BASE}/public/branding`, { next: { revalidate: 300 } });

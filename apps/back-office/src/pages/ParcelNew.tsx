@@ -383,6 +383,8 @@ export function ParcelNew() {
                   <option value="fr">FR</option>
                   <option value="en">EN</option>
                   <option value="zh">中</option>
+                  <option value="sw">Kiswahili</option>
+                  <option value="ln">Lingála</option>
                 </select>
               </div>
             </div>

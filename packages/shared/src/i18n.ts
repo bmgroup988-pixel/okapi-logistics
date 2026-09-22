@@ -1,7 +1,7 @@
 import type { Locale } from './schemas.js';
 import type { NotificationChannel, NotificationTrigger } from './enums.js';
 
-export const LOCALES: Locale[] = ['fr', 'en', 'zh'];
+export const LOCALES: Locale[] = ['fr', 'en', 'zh', 'sw', 'ln'];
 export const DEFAULT_LOCALE: Locale = 'fr';
 
 export function resolveLocale(input: string | undefined | null): Locale {
@@ -31,6 +31,14 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<
       subject: 'Okapi Logistics — 包裹 {{numero_suivi}}',
       body: '您好，您的包裹 {{numero_suivi}} 当前状态为“{{statut}}”。查询：{{lien_suivi}}',
     },
+    sw: {
+      subject: 'Okapi Logistics — mzigo {{numero_suivi}}',
+      body: 'Habari, mzigo wako {{numero_suivi}} sasa uko katika hali « {{statut}} ». Fuatilia: {{lien_suivi}}',
+    },
+    ln: {
+      subject: 'Okapi Logistics — kolo {{numero_suivi}}',
+      body: 'Mbote, kolo na yo {{numero_suivi}} ezali sikoyo na etat « {{statut}} ». Landá yango: {{lien_suivi}}',
+    },
   },
   PAYMENT_RECEIVED: {
     fr: {
@@ -44,6 +52,14 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<
     zh: {
       subject: 'Okapi Logistics — 已收到付款',
       body: '我们已收到包裹 {{numero_suivi}} 的付款。查询：{{lien_suivi}}',
+    },
+    sw: {
+      subject: 'Okapi Logistics — malipo yamepokelewa',
+      body: 'Tumepokea malipo kwa mzigo {{numero_suivi}}. Fuatilia: {{lien_suivi}}',
+    },
+    ln: {
+      subject: 'Okapi Logistics — nde yozwami',
+      body: 'Tozwi nde mpo na kolo {{numero_suivi}}. Landá yango: {{lien_suivi}}',
     },
   },
   UNPAID_ON_ARRIVAL: {
@@ -59,6 +75,14 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<
       subject: 'Okapi Logistics — 待付余款',
       body: '您的包裹 {{numero_suivi}} 已到达 {{ville_destination}}。提货前需结清余款。查询：{{lien_suivi}}',
     },
+    sw: {
+      subject: 'Okapi Logistics — salio la kulipa',
+      body: 'Mzigo wako {{numero_suivi}} umefika {{ville_destination}}. Bado kuna salio la kulipa kabla ya kupokea mzigo. Fuatilia: {{lien_suivi}}',
+    },
+    ln: {
+      subject: 'Okapi Logistics — mbongo etikali',
+      body: 'Kolo na yo {{numero_suivi}} ekomi na {{ville_destination}}. Mbongo mosusu etikali ete ofuta liboso ya kozwa yango. Landá yango: {{lien_suivi}}',
+    },
   },
   DUNNING_REMINDER: {
     fr: {
@@ -73,6 +97,14 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<
       subject: 'Okapi Logistics — 付款提醒',
       body: '提醒：包裹 {{numero_suivi}} 需结清余款后方可派送。查询：{{lien_suivi}}',
     },
+    sw: {
+      subject: 'Okapi Logistics — ukumbusho wa malipo',
+      body: 'Ukumbusho: mzigo {{numero_suivi}} utatolewa tu baada ya salio kulipwa. Fuatilia: {{lien_suivi}}',
+    },
+    ln: {
+      subject: 'Okapi Logistics — souvenance ya nde',
+      body: 'Souvenance: kolo {{numero_suivi}} ekopesama kaka soki mbongo etikali efuti. Landá yango: {{lien_suivi}}',
+    },
   },
   DELIVERED: {
     fr: {
@@ -86,6 +118,14 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<
     zh: {
       subject: 'Okapi Logistics — 包裹已送达',
       body: '您的包裹 {{numero_suivi}} 已送达。感谢您选择 Okapi Logistics。',
+    },
+    sw: {
+      subject: 'Okapi Logistics — mzigo umetolewa',
+      body: 'Mzigo wako {{numero_suivi}} umetolewa. Asante kwa kuchagua Okapi Logistics.',
+    },
+    ln: {
+      subject: 'Okapi Logistics — kolo epesami',
+      body: 'Kolo na yo {{numero_suivi}} epesami. Melesi mpo na kopona Okapi Logistics.',
     },
   },
 };
@@ -122,6 +162,22 @@ export const PARCEL_STATUS_LABELS: Record<Locale, Record<string, string>> = {
     LIVRE: '已送达',
     ANNULE: '已取消',
     RETOURNE: '已退回',
+  },
+  sw: {
+    ENREGISTRE: 'Imesajiliwa',
+    EN_TRANSIT: 'Njiani',
+    ARRIVE: 'Imefika',
+    LIVRE: 'Imetolewa',
+    ANNULE: 'Imefutwa',
+    RETOURNE: 'Imerudishwa',
+  },
+  ln: {
+    ENREGISTRE: 'Ekomami',
+    EN_TRANSIT: 'Na nzela',
+    ARRIVE: 'Ekomi',
+    LIVRE: 'Epesami',
+    ANNULE: 'Elongolami',
+    RETOURNE: 'Ezongisami',
   },
 };
 

@@ -264,7 +264,7 @@ erDiagram
 | `iso2` | `char(2)` | UNIQUE, NOT NULL | `BJ`, `CD`, `CG`, `ZA`, `RW`, `BI`, `TZ`, `FR`, `CN`, `NG`. |
 | `name_key` | `text` | NOT NULL | i18n. |
 | `default_currency` | `char(3)` | FK `currencies.code`, NOT NULL | |
-| `default_locale` | `text` | NOT NULL | `fr`, `en`, `zh`. |
+| `default_locale` | `text` | NOT NULL | `fr`, `en`, `zh`, `sw`, `ln`. |
 | `phone_prefix` | `text` | | `+229`, `+243`… |
 | `tax_rate` | `numeric(6,4)` | NOT NULL DEFAULT 0 | TVA/taxe par défaut (Q13). |
 | `unpaid_delivery_policy` | `text` | NOT NULL DEFAULT `derogation` | `strict` \| `derogation` (RG-08). |
@@ -453,7 +453,7 @@ Textes éditables du site public et des e-mails non transactionnels.
 |------------------------|------|-------|
 | `id` `uuid` PK | | |
 | `content_block_id` `uuid` FK | | |
-| `locale` `text` NOT NULL | | `fr`, `en`, `zh`… |
+| `locale` `text` NOT NULL | | `fr`, `en`, `zh`, `sw`, `ln`… |
 | `value` `text` NOT NULL | | Contenu (Markdown autorisé pour les blocs longs). |
 | `updated_by` `uuid` FK `users.id` | | |
 | UNIQUE `(content_block_id, locale)` | | |
@@ -1332,7 +1332,7 @@ Insérés par migration (`AGENT_FRET`, `ADMIN_DAF`, `SUPER_ADMIN` + `role_permis
 | `fx.sync_cron` | `"0 */6 * * *"` |
 | `tracking.sequence_scope` | `"DESTINATION_CITY"` |
 | `dunning.schedule_days` | `[0, 2, 5]` |
-| `i18n.locales` | `["fr", "en", "zh"]` |
+| `i18n.locales` | `["fr", "en", "zh", "sw", "ln"]` |
 | `i18n.default_locale` | `"fr"` |
 | `brand.navy` | `"#170655"` |
 | `brand.orange` | `"#E47911"` |
@@ -1346,11 +1346,11 @@ Insérés par migration (`AGENT_FRET`, `ADMIN_DAF`, `SUPER_ADMIN` + `role_permis
 
 | Trigger | Canaux | Locales |
 |---------|--------|---------|
-| `STATUS_CHANGE` | SMS, WHATSAPP, EMAIL | fr, en, zh |
-| `PAYMENT_RECEIVED` | SMS, WHATSAPP, EMAIL | fr, en, zh |
-| `UNPAID_ON_ARRIVAL` | SMS, WHATSAPP, EMAIL | fr, en, zh |
-| `DUNNING_REMINDER` | SMS, WHATSAPP, EMAIL | fr, en, zh |
-| `DELIVERED` | SMS, WHATSAPP, EMAIL | fr, en, zh |
+| `STATUS_CHANGE` | SMS, WHATSAPP, EMAIL | fr, en, zh, sw, ln |
+| `PAYMENT_RECEIVED` | SMS, WHATSAPP, EMAIL | fr, en, zh, sw, ln |
+| `UNPAID_ON_ARRIVAL` | SMS, WHATSAPP, EMAIL | fr, en, zh, sw, ln |
+| `DUNNING_REMINDER` | SMS, WHATSAPP, EMAIL | fr, en, zh, sw, ln |
+| `DELIVERED` | SMS, WHATSAPP, EMAIL | fr, en, zh, sw, ln |
 
 ---
 

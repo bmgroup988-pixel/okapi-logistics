@@ -74,7 +74,7 @@ export class NotificationsService {
     parcelId: string,
     trigger: NotificationTrigger,
     channel: 'SMS' | 'WHATSAPP' | 'EMAIL',
-    locale: 'fr' | 'en' | 'zh',
+    locale: 'fr' | 'en' | 'zh' | 'sw' | 'ln',
     recipient: string,
     vars: Record<string, string | number>,
   ): Promise<void> {

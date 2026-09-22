@@ -53,8 +53,10 @@ export class SettingsService {
         fr: map['footer.slogan.fr'] ?? 'Le futur du commerce africain',
         en: map['footer.slogan.en'] ?? 'The future of African trade',
         zh: map['footer.slogan.zh'] ?? '非洲贸易的未来',
+        sw: map['footer.slogan.sw'] ?? 'Mustakabali wa biashara ya Afrika',
+        ln: map['footer.slogan.ln'] ?? 'Avenir ya mombongo ya Afrika',
       },
-      locales: map['i18n.locales'] ?? ['fr', 'en', 'zh'],
+      locales: map['i18n.locales'] ?? ['fr', 'en', 'zh', 'sw', 'ln'],
     };
   }
 
@@ -113,7 +115,7 @@ export class SettingsService {
 
   async upsertContent(
     key: string,
-    values: Partial<Record<'fr' | 'en' | 'zh', string>>,
+    values: Partial<Record<'fr' | 'en' | 'zh' | 'sw' | 'ln', string>>,
     user: CurrentUser,
     requestId?: string | null,
   ) {

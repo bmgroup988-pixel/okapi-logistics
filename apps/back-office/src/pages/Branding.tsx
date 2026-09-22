@@ -12,7 +12,13 @@ const COLOR_KEYS = [...BRAND_COLOR_KEYS, ...UI_COLOR_KEYS, ...STATUS_COLOR_KEYS]
 const CONTACT_ROW_1 = ['contact.email', 'contact.website'] as const;
 const CONTACT_ROW_2 = ['contact.phone', 'contact.whatsapp'] as const;
 const SOCIAL_KEYS = ['social.facebook', 'social.instagram', 'social.tiktok', 'social.x'] as const;
-const SLOGAN_KEYS = ['footer.slogan.fr', 'footer.slogan.en', 'footer.slogan.zh'] as const;
+const SLOGAN_KEYS = [
+  'footer.slogan.fr',
+  'footer.slogan.en',
+  'footer.slogan.zh',
+  'footer.slogan.sw',
+  'footer.slogan.ln',
+] as const;
 const TEXT_KEYS = [...CONTACT_ROW_1, ...CONTACT_ROW_2, ...SOCIAL_KEYS, ...SLOGAN_KEYS] as const;
 const KEYS = [...COLOR_KEYS, ...TEXT_KEYS, 'branding.logoUrl'] as const;
 
@@ -40,6 +46,8 @@ const LABELS: Record<string, string> = {
   'footer.slogan.fr': 'Slogan — FR',
   'footer.slogan.en': 'Slogan — EN',
   'footer.slogan.zh': 'Slogan — 中文',
+  'footer.slogan.sw': 'Slogan — Kiswahili',
+  'footer.slogan.ln': 'Slogan — Lingála',
 };
 
 const MAX_LOGO_BYTES = 400 * 1024;

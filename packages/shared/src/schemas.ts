@@ -24,7 +24,7 @@ const weightString = z.string().regex(/^\d+(\.\d{1,2})?$/, 'poids en kg, max 2 d
 const currencyCode = z.string().regex(/^[A-Z]{3}$/, 'code ISO 4217 (3 lettres majuscules)');
 const uuid = z.string().uuid();
 
-export const localeSchema = z.enum(['fr', 'en', 'zh']);
+export const localeSchema = z.enum(['fr', 'en', 'zh', 'sw', 'ln']);
 export type Locale = z.infer<typeof localeSchema>;
 
 export const moneyInputSchema = z.object({

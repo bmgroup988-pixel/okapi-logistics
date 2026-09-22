@@ -11,6 +11,8 @@ const contentPutSchema = z.object({
   fr: z.string().max(20_000).optional(),
   en: z.string().max(20_000).optional(),
   zh: z.string().max(20_000).optional(),
+  sw: z.string().max(20_000).optional(),
+  ln: z.string().max(20_000).optional(),
 });
 
 @Controller()

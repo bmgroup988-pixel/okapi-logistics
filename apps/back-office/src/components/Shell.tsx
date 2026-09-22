@@ -43,7 +43,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         >
           {LOCALES.map((l) => (
             <option key={l} value={l}>
-              {l === 'zh' ? '中文' : l.toUpperCase()}
+              {l === 'zh' ? '中文' : l === 'sw' ? 'Kiswahili' : l === 'ln' ? 'Lingála' : l.toUpperCase()}
             </option>
           ))}
         </select>

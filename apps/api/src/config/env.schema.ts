@@ -34,7 +34,7 @@ export const envSchema = z.object({
   JWT_ACCESS_TTL: z.coerce.number().int().positive().default(900),
   JWT_REFRESH_TTL: z.coerce.number().int().positive().default(2_592_000),
 
-  DEFAULT_LOCALE: z.enum(['fr', 'en', 'zh']).default('fr'),
+  DEFAULT_LOCALE: z.enum(['fr', 'en', 'zh', 'sw', 'ln']).default('fr'),
   TRACKING_SEQUENCE_SCOPE: z.enum(['DESTINATION_CITY', 'GLOBAL']).default('DESTINATION_CITY'),
   CONTACT_EMAIL: z.string().default('contact.gokapi@gmail.com'),
   SEED_PASSWORD: z.string().default('OkapiDev!2026'),

@@ -346,7 +346,7 @@ async function seedSettings() {
     ['fx.sync_cron', '0 */6 * * *'],
     ['tracking.sequence_scope', 'DESTINATION_CITY'],
     ['dunning.schedule_days', [0, 2, 5]],
-    ['i18n.locales', ['fr', 'en', 'zh']],
+    ['i18n.locales', ['fr', 'en', 'zh', 'sw', 'ln']],
     ['i18n.default_locale', 'fr'],
     ['brand.navy', '#170655'],
     ['brand.orange', '#E47911'],
@@ -356,6 +356,8 @@ async function seedSettings() {
     ['footer.slogan.fr', 'Le futur du commerce africain'],
     ['footer.slogan.en', 'The future of African trade'],
     ['footer.slogan.zh', '非洲贸易的未来'],
+    ['footer.slogan.sw', 'Mustakabali wa biashara ya Afrika'],
+    ['footer.slogan.ln', 'Avenir ya mombongo ya Afrika'],
     ['pricing.override_max_pct', '0.15'],
   ];
   for (const [key, value] of entries) {
@@ -368,24 +370,30 @@ async function seedSettings() {
 }
 
 async function seedContent() {
-  const blocks: Array<{ key: string; fr: string; en: string; zh: string }> = [
+  const blocks: Array<{ key: string; fr: string; en: string; zh: string; sw: string; ln: string }> = [
     {
       key: 'public.home.title',
       fr: 'Suivez votre colis Okapi en temps réel',
       en: 'Track your Okapi parcel in real time',
       zh: '实时跟踪您的 Okapi 包裹',
+      sw: 'Fuatilia mzigo wako wa Okapi wakati halisi',
+      ln: 'Landá kolo na yo ya Okapi na ntango ya solo',
     },
     {
       key: 'public.home.subtitle',
       fr: 'Saisissez votre numéro de suivi. Aucun compte nécessaire.',
       en: 'Enter your tracking number. No account required.',
       zh: '输入您的运单号。无需账户。',
+      sw: 'Ingiza nambari yako ya ufuatiliaji. Hakuna akaunti inayohitajika.',
+      ln: 'Kotisa motango na yo ya bolandi. Compte esengami te.',
     },
     {
       key: 'public.footer.slogan',
       fr: 'Le futur du commerce africain',
       en: 'The future of African trade',
       zh: '非洲贸易的未来',
+      sw: 'Mustakabali wa biashara ya Afrika',
+      ln: 'Avenir ya mombongo ya Afrika',
     },
   ];
   for (const b of blocks) {
