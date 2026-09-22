@@ -114,14 +114,16 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
   FOURNISSEUR: [
     'shipment:create',
     'shipment:read',
-    'shipment:close',
-    // Verrouillé le 2026-09-22 — décision produit : le fournisseur ne doit
-    // pas (pour l'instant) ajouter/retirer des colis lui-même depuis son
-    // portail ; c'est le personnel interne qui enregistre ses colis
-    // (staff/suppliers, voir SupplierShipmentsStaffController). Ne PAS
-    // supprimer 'supplier-parcel:create' de PERMISSIONS ni le code associé
-    // (SupplierPortalController.addParcel/removeParcel) — réactivable ici
-    // d'une ligne si le besoin revient.
+    // Verrouillé le 2026-09-22 — décision produit : le fournisseur n'a droit
+    // qu'à ouvrir et consulter ses expéditions/factures, pas à ajouter des
+    // colis ni à clôturer (déclenche la facturation définitive, irréversible
+    // — voir SupplierPortalService.closeShipment) ; c'est le personnel
+    // interne qui enregistre les colis et clôture pour lui (staff/suppliers,
+    // voir SupplierShipmentsStaffController). Ne PAS supprimer
+    // 'supplier-parcel:create'/'shipment:close' de PERMISSIONS ni le code
+    // associé (SupplierPortalController.addParcel/removeParcel/closeShipment)
+    // — réactivables ici d'une ligne si le besoin revient.
+    // 'shipment:close',
     // 'supplier-parcel:create',
     'supplier-invoice:read',
   ],

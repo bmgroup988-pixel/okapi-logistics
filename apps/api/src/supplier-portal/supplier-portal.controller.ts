@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Req } from '@nestjs/common';
 import {
+  supplierInvoiceSendEmailSchema,
   supplierPortalParcelCreateSchema,
+  type SupplierInvoiceSendEmailInput,
   type SupplierPortalParcelCreateInput,
 } from '@okapi/shared';
 import type { Request } from 'express';
@@ -80,5 +82,16 @@ export class SupplierPortalController {
   @RequirePermissions('supplier-invoice:read')
   getInvoicePdf(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: CurrentUserType) {
     return this.portal.getInvoicePdfUrl(id, user);
+  }
+
+  @Post('invoices/:id/send-email')
+  @RequirePermissions('supplier-invoice:read')
+  async sendInvoiceEmail(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(supplierInvoiceSendEmailSchema)) body: SupplierInvoiceSendEmailInput,
+    @CurrentUser() user: CurrentUserType,
+  ) {
+    await this.portal.sendInvoiceEmail(id, body.recipientEmail, user);
+    return { sent: true };
   }
 }

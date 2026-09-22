@@ -370,3 +370,9 @@ export const supplierPortalParcelCreateSchema = z.object({
   contentNature: z.string().min(1).max(500).default('Colis fournisseur'),
 });
 export type SupplierPortalParcelCreateInput = z.infer<typeof supplierPortalParcelCreateSchema>;
+
+/** Envoi d'une facture fournisseur par e-mail — à défaut, l'e-mail de contact du fournisseur. */
+export const supplierInvoiceSendEmailSchema = z.object({
+  recipientEmail: z.string().email().optional(),
+});
+export type SupplierInvoiceSendEmailInput = z.infer<typeof supplierInvoiceSendEmailSchema>;

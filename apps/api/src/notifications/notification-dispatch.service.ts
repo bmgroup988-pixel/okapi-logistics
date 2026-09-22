@@ -39,6 +39,17 @@ export class NotificationDispatchService implements OnModuleInit, OnModuleDestro
     }
   }
 
+  /**
+   * Envoi immédiat, synchrone, hors file — pour une action déclenchée
+   * explicitement par un utilisateur (ex. « Envoyer par email » sur une
+   * facture fournisseur), pas pour un déclencheur automatique lié à un colis
+   * (voir NotificationsService.enqueueForParcel pour ce cas-là). Réutilise
+   * le même fournisseur EMAIL déjà configuré (SES ou console en repli).
+   */
+  async sendEmailNow(recipient: string, subject: string, body: string): Promise<void> {
+    await this.providers.EMAIL.send({ recipient, subject, body });
+  }
+
   onModuleInit(): void {
     const interval = this.config.get('NOTIFICATIONS_DISPATCH_INTERVAL_MS', { infer: true });
     this.timer = setInterval(() => void this.tick(), interval);

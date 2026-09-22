@@ -217,6 +217,8 @@ function ShipmentDetailModal({ id, onClose }: { id: string; onClose: () => void 
 /** Portail fournisseur en libre-service — docs/11, §7. */
 export function SupplierPortal() {
   const { t } = useT();
+  const { can } = useAuth();
+  const canClose = can('shipment:close');
   const qc = useQueryClient();
   const [tab, setTab] = useState<'shipments' | 'invoices'>('shipments');
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -255,6 +257,21 @@ export function SupplierPortal() {
     } catch (e) {
       alert(e instanceof ApiError ? e.message : 'PDF indisponible');
     }
+  };
+
+  const sendEmail = useMutation({
+    mutationFn: ({ invoiceId, recipientEmail }: { invoiceId: string; recipientEmail?: string }) =>
+      api(`/supplier-portal/invoices/${invoiceId}/send-email`, { method: 'POST', body: { recipientEmail } }),
+    onSuccess: () => alert('Facture envoyée par e-mail.'),
+    onError: (e) => alert(e instanceof ApiError ? e.message : "Envoi impossible"),
+  });
+
+  const handleSendEmail = (invoiceId: string) => {
+    const input = window.prompt(
+      "Adresse e-mail du destinataire (laisser vide pour utiliser l'e-mail de contact du fournisseur) :",
+    );
+    if (input === null) return; // annulé
+    sendEmail.mutate({ invoiceId, recipientEmail: input.trim() || undefined });
   };
 
   return (
@@ -310,7 +327,7 @@ export function SupplierPortal() {
                   </td>
                   <td>{new Date(s.openedAt).toLocaleDateString('fr-FR')}</td>
                   <td>
-                    {s.status === 'OUVERTE' && (
+                    {s.status === 'OUVERTE' && canClose && (
                       <button
                         className="btn"
                         disabled={s.parcelCount === 0 || closeShipment.isPending}
@@ -359,6 +376,10 @@ export function SupplierPortal() {
                   <td>
                     <button className="link" onClick={() => void downloadPdf(f.id)}>
                       PDF
+                    </button>
+                    {' · '}
+                    <button className="link" onClick={() => handleSendEmail(f.id)} disabled={sendEmail.isPending}>
+                      Envoyer par e-mail
                     </button>
                   </td>
                 </tr>

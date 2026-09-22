@@ -14,6 +14,7 @@ import { AuditService } from '../audit/audit.service';
 import type { CurrentUser } from '../auth/current-user';
 import { currentSupplierId } from '../auth/scope';
 import { FxService } from '../fx/fx.service';
+import { NotificationDispatchService } from '../notifications/notification-dispatch.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SequenceService } from '../sequences/sequence.service';
@@ -35,6 +36,7 @@ export class SupplierPortalService {
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
     private readonly notifications: NotificationsService,
+    private readonly dispatch: NotificationDispatchService,
   ) {}
 
   /** Fournisseur rattaché au compte connecté — jamais null pour un rôle FOURNISSEUR valide. */
@@ -555,6 +557,30 @@ export class SupplierPortalService {
       });
     }
     return this.storage.presignGet(invoice.storageKey, 'client');
+  }
+
+  /** Envoi de la facture par e-mail — lien de téléchargement, à défaut l'e-mail de contact du fournisseur. */
+  async sendInvoiceEmail(invoiceId: string, recipientEmail: string | undefined, user: CurrentUser): Promise<void> {
+    const supplier = await this.requireSupplier(user);
+    const invoice = await this.prisma.supplierInvoice.findUnique({ where: { id: invoiceId } });
+    if (!invoice || invoice.supplierId !== supplier.id) {
+      throw new NotFoundException({ error: { code: API_ERROR_CODES.NOT_FOUND, message: 'Facture introuvable' } });
+    }
+    const recipient = recipientEmail ?? supplier.contactEmail;
+    if (!recipient) {
+      throw new BadRequestException({
+        error: {
+          code: API_ERROR_CODES.VALIDATION,
+          message: 'Aucune adresse e-mail de destination — précise-la ou renseigne un e-mail de contact',
+        },
+      });
+    }
+    const { url } = await this.getInvoicePdfUrl(invoiceId, user);
+    await this.dispatch.sendEmailNow(
+      recipient,
+      `Okapi Logistics — facture ${invoice.number}`,
+      `Bonjour,\n\nVoici votre facture ${invoice.number} (${invoice.amountGross} ${invoice.currency}).\nTéléchargement : ${url}\n\nOkapi Logistics`,
+    );
   }
 }
 
