@@ -100,7 +100,7 @@ terminé** tant qu'une photo n'a pas été prise.
 
 L'écran affiche :
 
-- le **numéro de suivi** (ex. `OKP26090043FIH`) ;
+- le **numéro de suivi** (ex. `OKP2209260043FIH`) ;
 - le **montant dû** et le statut **« IMPAYÉ »** ;
 - les boutons : **Ouvrir la fiche** (pour imprimer les documents ou encaisser) et
   **＋ Enregistrer un autre colis**.
@@ -131,10 +131,13 @@ votre administration (problème de stockage).
 
 ## 5. Le numéro de suivi et l'étiquette
 
-Le numéro de suivi a la forme **`OKP` + année + mois + numéro + code ville** :
-`OKP` `26` `09` `0043` `FIH` = 43ᵉ colis à destination de Kinshasa en septembre 2026.
+Le numéro de suivi a la forme **`OKP` + jour + mois + année + numéro + code ville** :
+`OKP` `22` `09` `26` `0043` `FIH` = 43ᵉ colis à destination de Kinshasa, enregistré le
+22 septembre 2026. Le numéro d'ordre repart à `0001` au début de chaque mois (pas chaque
+jour) — le 43ᵉ colis peut aussi bien être le premier de la journée que le dernier.
 
-Il est **unique** et n'est **jamais réattribué**.
+Il est **unique** et n'est **jamais réattribué**. Les numéros enregistrés avant le
+22/09/2026 (sans le jour, ex. `OKP26090043FIH`) restent valables tels quels.
 
 Documents disponibles depuis la fiche du colis, onglet **« Documents »** :
 

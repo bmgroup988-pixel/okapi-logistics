@@ -44,6 +44,8 @@ export const PERMISSIONS = [
   'shipment:close',
   'supplier-parcel:create',
   'supplier-invoice:read',
+  /** Groupage de colis (walk-in et/ou fournisseur) pour le suivi de transit — hors facturation. */
+  'groupage:manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -65,6 +67,7 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
     'tariff:read',
     'fx:read',
     'config:read',
+    'groupage:manage',
   ],
   ADMIN_DAF: [
     // Secours : le DAF peut enregistrer un colis si les agents sont
@@ -89,6 +92,7 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
     'settlement:read',
     'settlement:write',
     'supplier:manage',
+    'groupage:manage',
   ],
   SUPER_ADMIN: [...PERMISSIONS],
   /** Compte externe (portail self-service) — jamais de permission interne. */

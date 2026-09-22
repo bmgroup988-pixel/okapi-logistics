@@ -1,6 +1,6 @@
 # 11 — Module « Gestion des fournisseurs » : expéditions groupées, facturation consolidée, portail dédié
 
-> **État : proposition, non implémentée.** Document de conception en réponse à la demande du 2026-09-18. Décrit le schéma de données, les endpoints API, la logique de clôture/facturation et une maquette du portail fournisseur. Complémentaire à `03-modele-de-donnees.md` (référentiel existant) et `09-addendum-extension-reseau-permissions.md` (dont il reprend le style de modélisation).
+> **État : implémenté** (`Supplier`, `Shipment`, `SupplierInvoice`, portail fournisseur). Document de conception d'origine, en réponse à la demande du 2026-09-18 — conservé tel quel comme référence du schéma et de la logique de clôture/facturation. Complémentaire à `03-modele-de-donnees.md` (référentiel existant) et `09-addendum-extension-reseau-permissions.md` (dont il reprend le style de modélisation). Voir aussi §9 : le **groupage**, une brique distincte ajoutée le 2026-09-22 pour le suivi de transit (walk-in et/ou fournisseur), sans lien avec la facturation décrite ici.
 
 ---
 
@@ -440,6 +440,56 @@ export function SupplierPortal() {
 - **Paiement du fournisseur** : cette proposition couvre l'émission de la facture, pas son règlement. À rattacher au module `Payment` existant (le fournisseur paie sa facture comme un client classique) ou à un flux dédié si le crédit/délai de paiement diffère — question ouverte, dépend du modèle commercial voulu avec les fournisseurs.
 - **Tarification spécifique fournisseur** (remise volume, tarif négocié) : le calcul actuel réutilise le moteur de tarification standard (`Tariff`, `pricing.ts`) tel quel. Un tarif préférentiel par fournisseur serait une extension ultérieure (nouvelle table `SupplierTariff`, même logique que `PartnerTariff`).
 - **Auto-inscription** des fournisseurs (actuellement : création uniquement par un agent interne via `/admin/suppliers`, puis activation du portail). Un formulaire public de demande d'inscription serait une itération suivante si le volume le justifie.
+
+---
+
+## 9. Groupage — suivi de transit indépendant de la facturation
+
+> **État : implémenté** (`Groupage`, 2026-09-22).
+
+Besoin distinct de l'expédition fournisseur (§1-8) : regrouper des colis **quelle que soit leur
+origine** (walk-in enregistré en agence, et/ou fournisseur) sous un même **numéro de groupage**,
+pour savoir précisément, colis par colis, lesquels sont effectivement partis lors d'un transit
+donné — cas concret : 100 colis groupés, mais seuls 80 embarqués sur le vol/véhicule au moment de
+l'expédition, les 20 autres repartant sur le groupage suivant.
+
+Différence-clé avec `Shipment` : **aucune facturation** n'est rattachée à un groupage. Chaque colis
+(walk-in ou fournisseur) est déjà facturé/soldé individuellement à son enregistrement
+(`Parcel.amountDue`) — le groupage n'est qu'un regroupement logistique, formé parfois plusieurs
+jours après le dépôt des colis.
+
+```
+Groupage
+  id               uuid PK
+  code             text unique       -- GRP-AAMM-NNNN, séquentiel global mensuel
+  originAgencyId   uuid FK -> Agency
+  status           GroupageStatus     -- OUVERT | CLOTURE | ANNULE
+  parcelCount      int default 0      -- dénormalisé, recalculé à la clôture
+  totalWeightKg    decimal(10,2) default 0
+  note             text?
+  openedById / closedById
+  openedAt / closedAt
+  createdAt / updatedAt
+```
+
+`Parcel.groupageId` (nullable, indépendant de `supplierId`/`shipmentId`) : un colis peut appartenir
+à un `Shipment` (facturation fournisseur) **et** à un `Groupage` (suivi de transit) en même temps,
+à l'un des deux, ou à aucun.
+
+Endpoints (`groupage:manage` — agent fret, DAF, super-admin ; **pas** le rôle FOURNISSEUR) :
+
+| Méthode | Route | Effet |
+|---|---|---|
+| `GET` | `/groupages` | Liste, filtrable par `status`, restreinte au périmètre agence de l'utilisateur. |
+| `GET` | `/groupages/:id` | Détail + colis membres avec leur statut individuel (`ENREGISTRE`…`LIVRE`). |
+| `POST` | `/groupages` | Ouvre un groupage (agence de départ, note libre). |
+| `POST` | `/groupages/:id/parcels` | Ajoute un colis par numéro de suivi (rejette un colis annulé ou déjà dans un autre groupage). |
+| `DELETE` | `/groupages/:id/parcels/:parcelId` | Retire un colis (uniquement tant que `OUVERT`). |
+| `POST` | `/groupages/:id/close` | Clôture (`CLOTURE`), fige `parcelCount`. |
+
+« Combien sont arrivés » se lit directement depuis le statut de chaque colis membre
+(`ARRIVE`/`HANDED_TO_PARTNER`/`LIVRE` = arrivé) — aucune donnée dupliquée, la source de vérité
+reste le statut du colis, déjà mis à jour par les écrans existants (transition de statut).
 
 ---
 

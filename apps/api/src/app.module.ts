@@ -15,6 +15,7 @@ import { buildConfig } from './config/configuration';
 import { validateEnv, type Env } from './config/env.schema';
 import { DeliveryPartnersModule } from './delivery-partners/delivery-partners.module';
 import { FxModule } from './fx/fx.module';
+import { GroupagesModule } from './groupages/groupages.module';
 import { HealthModule } from './health/health.module';
 import { IamModule } from './iam/iam.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -71,6 +72,7 @@ import { TariffsModule } from './tariffs/tariffs.module';
     SuppliersModule,
     SupplierPortalModule,
     CarriersModule,
+    GroupagesModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

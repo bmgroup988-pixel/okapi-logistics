@@ -703,14 +703,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Composition du numéro de suivi (EF-ENR-07 / EF-ENR-08).
+-- Composition du numéro de suivi (EF-ENR-07 / EF-ENR-08). Référence
+-- documentaire uniquement — la génération réelle vit côté application
+-- (packages/shared/src/tracking.ts), cette fonction n'est pas déployée par
+-- 00_constraints.sql. Compteur mensuel (yymm) par ville ; le jour (jjmmaa)
+-- n'affecte que l'affichage du code, pas la période de remise à zéro.
 CREATE OR REPLACE FUNCTION build_tracking_number(p_city_code char(3), p_scope_key text)
 RETURNS text AS $$
 DECLARE
-  yymm text := to_char(now() AT TIME ZONE 'UTC', 'YYMM');
-  seq  bigint := next_sequence_value('tracking', p_scope_key, yymm);
+  yymm  text := to_char(now() AT TIME ZONE 'UTC', 'YYMM');
+  jjmmaa text := to_char(now() AT TIME ZONE 'UTC', 'DDMMYY');
+  seq   bigint := next_sequence_value('tracking', p_scope_key, yymm);
 BEGIN
-  RETURN 'OKP' || yymm || lpad(seq::text, 4, '0') || p_city_code;
+  RETURN 'OKP' || jjmmaa || lpad(seq::text, 4, '0') || p_city_code;
 END;
 $$ LANGUAGE plpgsql;
 

@@ -44,7 +44,10 @@ export type TrackingResult =
   | { kind: 'invalid_format' }
   | { kind: 'error' };
 
-const TRACKING_FORMAT = /^OKP\d{8}[A-Z]{3}$/;
+// Accepte le format actuel (OKP + JJMMAA + séquentiel 4+ chiffres + ville,
+// 10+ chiffres) et l'ancien format pré-2026-09-22 (OKP + AAMM + séquentiel
+// 4+ chiffres + ville, 8+ chiffres) — les numéros déjà émis restent valides.
+const TRACKING_FORMAT = /^OKP\d{8,}[A-Z]{3}$/;
 
 export async function fetchTracking(trackingNumberRaw: string): Promise<TrackingResult> {
   const trackingNumber = trackingNumberRaw.trim().toUpperCase();

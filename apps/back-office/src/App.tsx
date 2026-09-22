@@ -18,6 +18,7 @@ import { Suppliers } from './pages/Suppliers';
 import { SupplierPortal } from './pages/SupplierPortal';
 import { Profile } from './pages/Profile';
 import { Carriers } from './pages/Carriers';
+import { Groupages, GroupageDetail } from './pages/Groupages';
 
 function Guard({ perm, children }: { perm?: string; children: React.ReactNode }) {
   const { can } = useAuth();
@@ -53,6 +54,8 @@ export function App() {
         <Route path="/parcels" element={<Guard perm="parcel:read"><ParcelsList /></Guard>} />
         <Route path="/parcels/new" element={<Guard perm="parcel:create"><ParcelNew /></Guard>} />
         <Route path="/parcels/:id" element={<Guard perm="parcel:read"><ParcelDetail /></Guard>} />
+        <Route path="/groupages" element={<Guard perm="groupage:manage"><Groupages /></Guard>} />
+        <Route path="/groupages/:id" element={<Guard perm="groupage:manage"><GroupageDetail /></Guard>} />
         <Route path="/reports" element={<Guard perm="report:read"><Reports /></Guard>} />
         <Route path="/tariffs" element={<Guard perm="tariff:read"><Tariffs /></Guard>} />
         <Route path="/exchange-rates" element={<Guard perm="fx:read"><ExchangeRates /></Guard>} />

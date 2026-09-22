@@ -755,7 +755,7 @@ erDiagram
 | Colonne | Type | Contraintes | Notes |
 |---------|------|-------------|-------|
 | `id` | `uuid` | PK | |
-| `tracking_number` | `text` | UNIQUE, NOT NULL | `OKP` + `AAMM` + séquentiel + code ville. Jamais réattribué. Index `citext`/`upper()` pour la recherche insensible à la casse. |
+| `tracking_number` | `text` | UNIQUE, NOT NULL | `OKP` + `JJMMAA` (jour d'enregistrement) + séquentiel + code ville. Jamais réattribué. Ancien format sans le jour (`OKP` + `AAMM` + séquentiel + ville) toujours reconnu en lecture pour les numéros émis avant le 2026-09-22. Index `citext`/`upper()` pour la recherche insensible à la casse. |
 | `registration_agency_id` | `uuid` | FK `agencies.id`, NOT NULL | Périmètre. |
 | `registration_agent_id` | `uuid` | FK `users.id`, NOT NULL | |
 | `origin_city_id` | `uuid` | FK `cities.id`, NOT NULL | |
@@ -1035,18 +1035,25 @@ DO UPDATE SET last_value = sequences.last_value + 1, updated_at = now()
 RETURNING last_value;
 ```
 
-**Composition du numéro de suivi** (`tracking_number`) :
+**Composition du numéro de suivi** (`tracking_number`) — révisée le 2026-09-22 pour afficher le
+jour exact d'enregistrement (demande produit : « ça rassure de connaître le jour de dépôt ») :
 
 ```
-'OKP' || to_char(now() AT TIME ZONE 'UTC', 'YYMM')
+'OKP' || to_char(now() AT TIME ZONE 'UTC', 'DDMMYY')  -- jour affiché, mais la PÉRIODE du compteur reste 'YYMM' (mensuelle, pas journalière)
       || lpad(last_value::text, 4, '0')     -- 5+ chiffres si last_value > 9999 (EF-ENR-08)
       || destination_city_code               -- 3 lettres, figé sur le colis
 ```
 
-`scope_key` = `destination_city_code` (code IATA), `period` = `AAMM` : le compteur est donc
-**propre à chaque destination et remis à zéro chaque mois** (D2). `settings['tracking.sequence_scope']`
-vaut `"DESTINATION_CITY"` par défaut ; la valeur `"GLOBAL"` reste possible mais n'est pas
-retenue pour Okapi.
+`scope_key` = `destination_city_code` (code IATA), `period` = `AAMM` (inchangé — seul l'affichage
+change, pas la logique de remise à zéro) : le compteur est donc **propre à chaque destination et
+remis à zéro chaque mois** (pas chaque jour), D2. `settings['tracking.sequence_scope']` vaut
+`"DESTINATION_CITY"` par défaut ; la valeur `"GLOBAL"` reste possible mais n'est pas retenue pour
+Okapi — précisément parce que le code ville en fin de numéro permet un compteur par destination
+sans risque de collision, même avec le jour désormais affiché.
+
+Les numéros déjà émis avant cette révision (sans le jour, format `OKP` + `AAMM` + séquentiel +
+ville) restent valides et continuent d'être reconnus en lecture (`parseTrackingNumber`,
+`isValidTrackingNumber`) — seuls les nouveaux colis utilisent le nouveau format.
 
 **Numérotation des pièces** (`invoice.number`) : `scope_type='invoice'`,
 `scope_key='country:'||iso2`, `period` = année ou `ALL` selon la règle locale ; format

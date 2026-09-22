@@ -39,10 +39,15 @@ test('computeSettlement : statut de paiement dérivé', () => {
 
 test('numéro de suivi : composition et relecture', () => {
   const at = new Date('2026-07-15T10:00:00Z');
-  assert.equal(composeTrackingNumber({ at, seq: 42, cityCode: 'fih' }), 'OKP26070042FIH');
-  const parts = parseTrackingNumber('OKP26070042FIH');
-  assert.deepEqual(parts, { year: 2026, month: 7, seq: 42, cityCode: 'FIH' });
+  assert.equal(composeTrackingNumber({ at, seq: 42, cityCode: 'fih' }), 'OKP1507260042FIH');
+  const parts = parseTrackingNumber('OKP1507260042FIH');
+  assert.deepEqual(parts, { day: 15, year: 2026, month: 7, seq: 42, cityCode: 'FIH' });
   assert.equal(parseTrackingNumber('bad'), null);
+});
+
+test('numéro de suivi : ancien format (sans jour) toujours reconnu en lecture', () => {
+  const parts = parseTrackingNumber('OKP26070042FIH');
+  assert.deepEqual(parts, { day: null, year: 2026, month: 7, seq: 42, cityCode: 'FIH' });
 });
 
 test('crossConvert : XOF -> USD via pivot', () => {

@@ -193,7 +193,7 @@ Parcel
   status                enum(...)
 ```
 
-Le numéro de suivi conserve le format déjà validé `OKP + AAMM + NNNN + code ville de destination` (ex. `OKP2609XXXXFIH`), le code ville étant désormais tiré du référentiel étendu à 26 provinces + villes internationales existantes.
+Le numéro de suivi conserve le format déjà validé `OKP + JJMMAA + NNNN + code ville de destination` (ex. `OKP220926XXXXFIH` ; ancien format `OKP2609XXXXFIH` sans le jour toujours reconnu en lecture pour les numéros déjà émis), le code ville étant désormais tiré du référentiel étendu à 26 provinces + villes internationales existantes.
 
 > **Intégration.** `originAgencyId` existait déjà dans le schéma avant l'addendum. `destinationCityId` existait également (champ central de la tarification). `destinationAgencyId`, `deliveryPartnerId` et `transitAgencyId` ont été ajoutés par la migration `20260910150000_network_extension_and_permissions`. `destinationAgencyId` est résolu automatiquement à la création si la ville de destination est `HUB` ; `deliveryPartnerId` est résolu ou exigé si elle est `PARTNER` (§1.4).
 

@@ -60,6 +60,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {isSupplierOnly ? item('/supplier-portal', t('nav.supplierPortal')) : item('/', t('nav.dashboard'))}
         {can('parcel:create') && item('/parcels/new', t('nav.new'))}
         {can('parcel:read') && item('/parcels', t('nav.parcels'))}
+        {can('groupage:manage') && item('/groupages', t('nav.groupages'))}
 
         {(can('report:read') || can('tariff:write') || can('fx:write') || can('settlement:read')) && (
           <div className="sep">{t('nav.admin')}</div>

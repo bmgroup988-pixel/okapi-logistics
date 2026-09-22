@@ -143,6 +143,15 @@ enum ShipmentStatus {
   ANNULEE
 }
 
+/// Groupage de transit — regroupe des colis walk-in et/ou fournisseur pour un
+/// même trajet, indépendant de `Shipment`/facturation (demande produit du
+/// 2026-09-22).
+enum GroupageStatus {
+  OUVERT
+  CLOTURE
+  ANNULE
+}
+
 // ============================================ Référentiel & configuration
 model Currency {
   code          String   @id @db.Char(3)
@@ -248,6 +257,7 @@ model Agency {
   userRoles            UserRole[]
   suppliers            Supplier[]
   shipmentsOrigin      Shipment[]
+  groupagesOrigin      Groupage[]
 
   @@index([countryId])
   @@map("agencies")
@@ -541,6 +551,9 @@ model Parcel {
   /// colis walk-in classique enregistré en agence.
   supplierId            String?              @map("supplier_id") @db.Uuid
   shipmentId            String?              @map("shipment_id") @db.Uuid
+  /// Groupage de transit (walk-in et/ou fournisseur confondus) — indépendant
+  /// de `shipmentId`/facturation, purement pour le suivi logistique.
+  groupageId            String?              @map("groupage_id") @db.Uuid
   /// Compagnie de transport sous-traitée pour l'expédition — renseignée à la
   /// transition EN_TRANSIT, jamais obligatoire à l'enregistrement.
   carrierId             String?              @map("carrier_id") @db.Uuid
@@ -579,6 +592,7 @@ model Parcel {
   deliveryPartner     DeliveryPartner?     @relation(fields: [deliveryPartnerId], references: [id])
   supplier            Supplier?            @relation(fields: [supplierId], references: [id])
   shipment            Shipment?            @relation(fields: [shipmentId], references: [id])
+  groupage            Groupage?            @relation(fields: [groupageId], references: [id])
   carrier             Carrier?             @relation(fields: [carrierId], references: [id])
   registrationAgent   User                 @relation("ParcelRegistrationAgent", fields: [registrationAgentId], references: [id])
   originCity          City                 @relation("ParcelOriginCity", fields: [originCityId], references: [id])
@@ -598,6 +612,7 @@ model Parcel {
   @@index([destinationAgencyId])
   @@index([deliveryPartnerId])
   @@index([shipmentId])
+  @@index([groupageId])
   @@map("parcels")
 }
 
@@ -1002,6 +1017,35 @@ model Shipment {
 
   @@index([supplierId, status, openedAt])
   @@map("shipments")
+}
+
+/// Groupage de transit — colis walk-in et/ou fournisseur regroupés pour un
+/// même trajet, uniquement pour le suivi logistique (quels colis du lot sont
+/// arrivés vs pas encore). Sans lien avec la facturation, déjà réglée par
+/// colis à l'enregistrement (`Parcel.amountDue`) — contrairement à
+/// `Shipment`, un `Groupage` ne génère jamais de facture.
+model Groupage {
+  id             String         @id @default(uuid()) @db.Uuid
+  /// GRP-AAMM-NNNN, séquentiel global mensuel.
+  code           String         @unique
+  originAgencyId String         @map("origin_agency_id") @db.Uuid
+  status         GroupageStatus @default(OUVERT)
+  /// Dénormalisé pour l'affichage — source de vérité = COUNT(parcels).
+  parcelCount    Int            @default(0) @map("parcel_count")
+  totalWeightKg  Decimal        @default(0) @map("total_weight_kg") @db.Decimal(10, 2)
+  note           String?
+  openedById     String?        @map("opened_by") @db.Uuid
+  closedById     String?        @map("closed_by") @db.Uuid
+  openedAt       DateTime       @default(now()) @map("opened_at") @db.Timestamptz(6)
+  closedAt       DateTime?      @map("closed_at") @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  originAgency Agency   @relation(fields: [originAgencyId], references: [id])
+  parcels      Parcel[]
+
+  @@index([status, openedAt])
+  @@map("groupages")
 }
 
 /// Facture unique adressée au fournisseur à la clôture d'une expédition —

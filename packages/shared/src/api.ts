@@ -241,3 +241,32 @@ export interface SupplierInvoiceLineDto {
 export interface SupplierInvoiceDetailDto extends SupplierInvoiceDto {
   lines: SupplierInvoiceLineDto[];
 }
+
+export interface GroupageDto {
+  id: string;
+  code: string; // GRP-AAMM-NNNN
+  status: 'OUVERT' | 'CLOTURE' | 'ANNULE';
+  originAgencyId: string;
+  originAgencyName: string;
+  parcelCount: number;
+  totalWeightKg: string;
+  note: string | null;
+  openedAt: string;
+  closedAt: string | null;
+}
+
+export interface GroupageParcelDto {
+  id: string;
+  trackingNumber: string;
+  status: string; // ParcelStatus
+  destinationCityCode: string;
+  destinationCityName: string;
+  weightKg: string;
+  recipientName: string;
+  /** Code fournisseur (FRN-XXXXXX) si le colis vient d'un fournisseur, sinon null (walk-in). */
+  supplierCode: string | null;
+}
+
+export interface GroupageDetailDto extends GroupageDto {
+  parcels: GroupageParcelDto[];
+}
