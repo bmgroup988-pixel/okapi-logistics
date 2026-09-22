@@ -17,7 +17,7 @@
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "prepare": "npm run build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test dist/**/*.test.js"
+    "test": "npm run build && node ../../scripts/run-tests.mjs dist .test.js"
   },
   "dependencies": {
     "zod": "^3.23.8"
