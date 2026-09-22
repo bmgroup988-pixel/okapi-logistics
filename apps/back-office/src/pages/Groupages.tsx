@@ -51,6 +51,70 @@ function groupageStatusKind(s: string): string {
   return s === 'CLOTURE' ? 'ok' : s === 'ANNULE' ? 'err' : 'info';
 }
 
+/**
+ * Champ de recherche + suggestions pour choisir un colis à ajouter à un
+ * groupage — tape le code complet, ou juste les derniers chiffres et la
+ * ville de destination (ex. « 0043 FIH ») pour le retrouver vite.
+ */
+function ParcelPicker({
+  parcels,
+  value,
+  onSelect,
+}: {
+  parcels: AvailableParcel[];
+  value: AvailableParcel | null;
+  onSelect: (p: AvailableParcel | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const normalized = query.replace(/\s+/g, '').toUpperCase();
+  const matches = normalized
+    ? parcels
+        .filter((p) => p.trackingNumber.replace(/\s+/g, '').toUpperCase().includes(normalized))
+        .slice(0, 8)
+    : [];
+
+  return (
+    <div className="msd" style={{ flex: '1 1 280px', marginBottom: 0 }}>
+      <input
+        placeholder="Code du colis, ou 4 derniers chiffres + ville (ex. 0043 FIH)"
+        value={value ? value.trackingNumber : query}
+        onChange={(e) => {
+          if (value) onSelect(null);
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+      />
+      {open && !value && matches.length > 0 && (
+        <div className="msd-panel">
+          {matches.map((p) => (
+            <div
+              key={p.id}
+              className="msd-option"
+              onMouseDown={() => {
+                onSelect(p);
+                setQuery('');
+                setOpen(false);
+              }}
+            >
+              <span className="mono">{p.trackingNumber}</span> · {p.destinationCityCode}{' '}
+              {p.destinationCityName} · {p.recipientName} · {p.weightKg} kg
+            </div>
+          ))}
+        </div>
+      )}
+      {open && !value && normalized && matches.length === 0 && (
+        <div className="msd-panel">
+          <div className="msd-option muted">Aucun colis disponible ne correspond.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CreateGroupageModal({ onClose }: { onClose: (id?: string) => void }) {
   const agencies = useQuery({ queryKey: ['reference-agencies'], queryFn: () => api<Agency[]>('/reference/agencies') });
   const [destinationAgencyId, setDestinationAgencyId] = useState('');
@@ -179,7 +243,7 @@ export function Groupages() {
 export function GroupageDetail() {
   const { id = '' } = useParams();
   const qc = useQueryClient();
-  const [parcelId, setParcelId] = useState('');
+  const [selectedParcel, setSelectedParcel] = useState<AvailableParcel | null>(null);
   const [error, setError] = useState<unknown>(null);
 
   const groupage = useQuery({
@@ -198,9 +262,9 @@ export function GroupageDetail() {
   };
 
   const addParcel = useMutation({
-    mutationFn: () => api(`/groupages/${id}/parcels`, { method: 'POST', body: { parcelId } }),
+    mutationFn: () => api(`/groupages/${id}/parcels`, { method: 'POST', body: { parcelId: selectedParcel?.id } }),
     onSuccess: () => {
-      setParcelId('');
+      setSelectedParcel(null);
       setError(null);
       refresh();
     },
@@ -260,15 +324,8 @@ export function GroupageDetail() {
               className="row"
               style={{ marginBottom: 4 }}
             >
-              <select value={parcelId} onChange={(e) => setParcelId(e.target.value)} required>
-                <option value="">— Choisir un colis —</option>
-                {availableParcels.data?.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.trackingNumber} · {p.destinationCityCode} {p.destinationCityName} · {p.recipientName} · {p.weightKg} kg
-                  </option>
-                ))}
-              </select>
-              <button className="btn primary" type="submit" disabled={addParcel.isPending || !parcelId}>
+              <ParcelPicker parcels={availableParcels.data ?? []} value={selectedParcel} onSelect={setSelectedParcel} />
+              <button className="btn primary" type="submit" disabled={addParcel.isPending || !selectedParcel}>
                 + Ajouter
               </button>
             </form>

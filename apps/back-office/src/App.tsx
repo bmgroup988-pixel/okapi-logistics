@@ -57,7 +57,7 @@ export function App() {
         <Route path="/parcels/:id" element={<Guard perm="parcel:read"><ParcelDetail /></Guard>} />
         <Route path="/groupages" element={<Guard perm="groupage:manage"><Groupages /></Guard>} />
         <Route path="/groupages/:id" element={<Guard perm="groupage:manage"><GroupageDetail /></Guard>} />
-        <Route path="/supplier-parcels" element={<Guard perm="supplier-parcel:create"><StaffSupplierParcels /></Guard>} />
+        <Route path="/supplier-parcels" element={<Guard perm="supplier-shipment:staff"><StaffSupplierParcels /></Guard>} />
         <Route path="/reports" element={<Guard perm="report:read"><Reports /></Guard>} />
         <Route path="/tariffs" element={<Guard perm="tariff:read"><Tariffs /></Guard>} />
         <Route path="/exchange-rates" element={<Guard perm="fx:read"><ExchangeRates /></Guard>} />

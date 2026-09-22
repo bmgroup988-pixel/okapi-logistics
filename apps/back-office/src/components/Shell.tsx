@@ -61,7 +61,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {can('parcel:create') && item('/parcels/new', t('nav.new'))}
         {can('parcel:read') && item('/parcels', t('nav.parcels'))}
         {can('groupage:manage') && item('/groupages', t('nav.groupages'))}
-        {can('supplier-parcel:create') && item('/supplier-parcels', t('nav.supplierParcels'))}
+        {can('supplier-shipment:staff') && item('/supplier-parcels', t('nav.supplierParcels'))}
 
         {(can('report:read') || can('tariff:write') || can('fx:write') || can('settlement:read')) && (
           <div className="sep">{t('nav.admin')}</div>

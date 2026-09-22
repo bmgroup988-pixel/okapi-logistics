@@ -16,26 +16,27 @@ import { SupplierPortalService } from './supplier-portal.service';
  * actions que le portail self-service (`SupplierPortalController`), mais le
  * fournisseur est choisi explicitement par l'agent plutôt que déduit de son
  * propre compte. Distinct de `/admin/suppliers` (gestion des comptes
- * fournisseurs, réservée `supplier:manage`).
+ * fournisseurs, réservée `supplier:manage`). Permission dédiée
+ * `supplier-shipment:staff` (jamais accordée au rôle FOURNISSEUR) — même si
+ * un compte fournisseur se retrouvait mal configuré avec des permissions
+ * internes, il ne pourrait pas atteindre ces routes.
  */
 @Controller('staff/suppliers')
+@RequirePermissions('supplier-shipment:staff')
 export class SupplierShipmentsStaffController {
   constructor(private readonly portal: SupplierPortalService) {}
 
   @Get()
-  @RequirePermissions('shipment:read')
   listSuppliers(@CurrentUser() user: CurrentUserType) {
     return this.portal.listSuppliersForStaff(user);
   }
 
   @Get(':supplierId/shipments')
-  @RequirePermissions('shipment:read')
   listShipments(@Param('supplierId', ParseUUIDPipe) supplierId: string, @CurrentUser() user: CurrentUserType) {
     return this.portal.listShipmentsForStaff(supplierId, user);
   }
 
   @Post(':supplierId/shipments')
-  @RequirePermissions('shipment:create')
   openShipment(
     @Param('supplierId', ParseUUIDPipe) supplierId: string,
     @CurrentUser() user: CurrentUserType,
@@ -45,7 +46,6 @@ export class SupplierShipmentsStaffController {
   }
 
   @Get(':supplierId/shipments/:shipmentId')
-  @RequirePermissions('shipment:read')
   getShipment(
     @Param('supplierId', ParseUUIDPipe) supplierId: string,
     @Param('shipmentId', ParseUUIDPipe) shipmentId: string,
@@ -55,7 +55,6 @@ export class SupplierShipmentsStaffController {
   }
 
   @Post(':supplierId/shipments/:shipmentId/parcels')
-  @RequirePermissions('supplier-parcel:create')
   addParcel(
     @Param('supplierId', ParseUUIDPipe) supplierId: string,
     @Param('shipmentId', ParseUUIDPipe) shipmentId: string,
@@ -67,7 +66,6 @@ export class SupplierShipmentsStaffController {
   }
 
   @Delete(':supplierId/shipments/:shipmentId/parcels/:parcelId')
-  @RequirePermissions('supplier-parcel:create')
   removeParcel(
     @Param('supplierId', ParseUUIDPipe) supplierId: string,
     @Param('shipmentId', ParseUUIDPipe) shipmentId: string,
@@ -79,7 +77,6 @@ export class SupplierShipmentsStaffController {
   }
 
   @Post(':supplierId/shipments/:shipmentId/close')
-  @RequirePermissions('shipment:close')
   closeShipment(
     @Param('supplierId', ParseUUIDPipe) supplierId: string,
     @Param('shipmentId', ParseUUIDPipe) shipmentId: string,

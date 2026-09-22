@@ -46,6 +46,14 @@ export const PERMISSIONS = [
   'supplier-invoice:read',
   /** Groupage de colis (walk-in et/ou fournisseur) pour le suivi de transit — hors facturation. */
   'groupage:manage',
+  /**
+   * Enregistrement de colis pour un fournisseur explicitement choisi, par le
+   * personnel interne (agent fret, DAF) agissant à sa place — distinct de
+   * `shipment:*`/`supplier-parcel:create` (self-service, réservé au compte
+   * FOURNISSEUR concerné) pour qu'aucun compte fournisseur ne puisse jamais
+   * atteindre cet outil interne, même par erreur de configuration de rôle.
+   */
+  'supplier-shipment:staff',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -68,13 +76,12 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
     'config:read',
     'groupage:manage',
     // Enregistrement de colis pour un fournisseur qui dépose physiquement à
-    // l'agence sans utiliser lui-même le portail — mêmes permissions que le
-    // portail self-service (FOURNISSEUR), exercées pour un fournisseur choisi
+    // l'agence sans utiliser lui-même le portail — fournisseur choisi
     // explicitement (pas d'auto-facturation : simple enregistrement).
-    'shipment:read',
-    'shipment:create',
-    'shipment:close',
-    'supplier-parcel:create',
+    // Permission dédiée, distincte de shipment:*/supplier-parcel:create
+    // (self-service FOURNISSEUR) pour qu'un compte fournisseur ne puisse
+    // jamais atteindre cet outil interne.
+    'supplier-shipment:staff',
   ],
   ADMIN_DAF: [
     // Secours : le DAF peut enregistrer un colis si les agents sont
@@ -100,10 +107,7 @@ export const ROLE_PERMISSIONS: Record<RoleCode, Permission[]> = {
     'settlement:write',
     'supplier:manage',
     'groupage:manage',
-    'shipment:read',
-    'shipment:create',
-    'shipment:close',
-    'supplier-parcel:create',
+    'supplier-shipment:staff',
   ],
   SUPER_ADMIN: [...PERMISSIONS],
   /** Compte externe (portail self-service) — jamais de permission interne. */
