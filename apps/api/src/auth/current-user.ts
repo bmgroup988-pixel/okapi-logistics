@@ -8,6 +8,7 @@ export interface CurrentUser {
   locale: string;
   roleCodes: string[];
   permissions: Set<Permission>;
+  mfaEnabled: boolean;
   /** Périmètre de données — RG-10 / ENF-SEC-04. */
   scope: {
     /** true pour SUPER_ADMIN : aucune restriction pays/agence sur les lectures. */

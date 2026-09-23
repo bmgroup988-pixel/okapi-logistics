@@ -234,6 +234,7 @@ export class AuthService {
       locale: user.defaultLocale,
       roleCodes,
       permissions: permissionsForRoles(validRoleCodes),
+      mfaEnabled: user.totpEnabled,
       scope: {
         isGlobal,
         countryIds: unique(user.roles.map((r) => r.scopeCountryId).filter(Boolean) as string[]),

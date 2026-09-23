@@ -28,7 +28,7 @@ function Guard({ perm, children }: { perm?: string; children: React.ReactNode })
 }
 
 export function App() {
-  const { me, loading, isSupplierOnly } = useAuth();
+  const { me, loading, isSupplierOnly, mfaSetupRequired } = useAuth();
 
   if (loading) {
     return (
@@ -40,6 +40,17 @@ export function App() {
     );
   }
   if (!me) return <Login />;
+
+  // Rôle à MFA obligatoire pas encore configurée — seule /profile est
+  // joignable côté API (MfaEnforcementGuard) ; on force cet écran ici aussi
+  // pour éviter une navigation vers des pages qui échoueraient en 403.
+  if (mfaSetupRequired) {
+    return (
+      <Shell>
+        <Profile />
+      </Shell>
+    );
+  }
 
   return (
     <Shell>

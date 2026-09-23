@@ -5,7 +5,7 @@ import type { Request } from 'express';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { AuthService } from './auth.service';
 import type { CurrentUser as CurrentUserType } from './current-user';
-import { CurrentUser, Public } from './decorators';
+import { CurrentUser, MfaExempt, Public } from './decorators';
 
 const otpBodySchema = z.object({ otp: z.string().regex(/^\d{6}$/) });
 
@@ -50,6 +50,7 @@ export class AuthController {
     await this.auth.logout(body.refreshToken);
   }
 
+  @MfaExempt()
   @Post('change-password')
   @HttpCode(204)
   async changePassword(
@@ -59,11 +60,13 @@ export class AuthController {
     await this.auth.changePassword(user, body.currentPassword, body.newPassword);
   }
 
+  @MfaExempt()
   @Post('mfa/enroll')
   mfaEnroll(@CurrentUser() user: CurrentUserType) {
     return this.auth.mfaEnroll(user);
   }
 
+  @MfaExempt()
   @Post('mfa/verify')
   @HttpCode(204)
   async mfaVerify(

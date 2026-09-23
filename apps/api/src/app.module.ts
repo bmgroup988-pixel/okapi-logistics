@@ -6,6 +6,7 @@ import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CarriersModule } from './carriers/carriers.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { MfaEnforcementGuard } from './auth/mfa-enforcement.guard';
 import { PermissionsGuard } from './auth/permissions.guard';
 import { BillingModule } from './billing/billing.module';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
@@ -78,6 +79,7 @@ import { TariffsModule } from './tariffs/tariffs.module';
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: MfaEnforcementGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
 })

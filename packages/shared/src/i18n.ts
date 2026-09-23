@@ -138,11 +138,11 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: Record<
  * tête, pas d'espace de fin (le gabarit fournit déjà l'espacement autour).
  */
 export const PICKUP_DEADLINE_REMINDER: Record<Locale, string> = {
-  fr: ' Merci de le récupérer sous 72h (3 jours) maximum.',
-  en: ' Please collect it within 72h (3 days) maximum.',
-  zh: ' 请在72小时（3天）内取件。',
-  sw: ' Tafadhali chukua mzigo ndani ya saa 72 (siku 3) zaidi.',
-  ln: ' Bondeli kozwa kolo na kati ya ngonga 72 (mikolo 3) mingi.',
+  fr: ' Merci de le récupérer sous 72h (3 jours) maximum — passé ce délai, des frais d’entreposage de 5$/jour seront facturés.',
+  en: ' Please collect it within 72h (3 days) maximum — after this deadline, storage fees of $5/day will apply.',
+  zh: ' 请在72小时（3天）内取件，逾期将按每天5美元收取仓储费。',
+  sw: ' Tafadhali chukua mzigo ndani ya saa 72 (siku 3) zaidi — ukipita muda huu, ada ya uhifadhi ya $5/siku itatozwa.',
+  ln: ' Bondeli kozwa kolo na kati ya ngonga 72 (mikolo 3) mingi — soki eleki, bakosenga mbongo ya kobomba kolo ya $5/mokolo.',
 };
 
 /** Rendu minimal d'un gabarit `{{var}}` -> valeur. */

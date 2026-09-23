@@ -6,7 +6,7 @@ import { ErrorText } from '../components/ui';
 
 /** Changement de mot de passe en libre-service — accessible à tout compte connecté. */
 export function Profile() {
-  const { me } = useAuth();
+  const { me, mfaSetupRequired } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -40,6 +40,17 @@ export function Profile() {
           <span className="muted">{me?.email}</span>
         </p>
       </div>
+
+      {mfaSetupRequired && (
+        <div className="card" style={{ maxWidth: 420, borderColor: 'var(--danger, #c0392b)' }}>
+          <p style={{ color: 'var(--danger, #c0392b)', fontWeight: 600, margin: 0 }}>
+            Double authentification obligatoire pour votre rôle — le reste de l'application reste
+            inaccessible tant qu'elle n'est pas activée ci-dessous.
+          </p>
+        </div>
+      )}
+
+      <MfaCard mfaEnabled={!!me?.mfaEnabled} />
 
       <div className="card" style={{ maxWidth: 420 }}>
         <h3>Changer mon mot de passe</h3>
@@ -82,5 +93,91 @@ export function Profile() {
         </form>
       </div>
     </>
+  );
+}
+
+/** Configuration de la double authentification (TOTP) — enrôlement puis confirmation par code. */
+function MfaCard({ mfaEnabled }: { mfaEnabled: boolean }) {
+  const { refreshMe } = useAuth();
+  const [enrollment, setEnrollment] = useState<{ secret: string; otpauthUri: string } | null>(null);
+  const [otp, setOtp] = useState('');
+  const [activated, setActivated] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  const enroll = useMutation({
+    mutationFn: () => api<{ secret: string; otpauthUri: string }>('/auth/mfa/enroll', { method: 'POST' }),
+    onSuccess: (data) => {
+      setEnrollment(data);
+      setError(null);
+    },
+    onError: setError,
+  });
+
+  const verify = useMutation({
+    mutationFn: () => api('/auth/mfa/verify', { method: 'POST', body: { otp } }),
+    onSuccess: async () => {
+      setActivated(true);
+      setError(null);
+      await refreshMe();
+    },
+    onError: setError,
+  });
+
+  if (mfaEnabled || activated) {
+    return (
+      <div className="card" style={{ maxWidth: 420 }}>
+        <h3>Double authentification</h3>
+        <p style={{ color: 'var(--ok)' }}>✔ Activée sur ce compte.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card" style={{ maxWidth: 420 }}>
+      <h3>Double authentification (MFA)</h3>
+      {!enrollment ? (
+        <>
+          <p className="muted">
+            Utilisez une application d'authentification (Google Authenticator, Authy, etc.).
+          </p>
+          <button className="btn primary" onClick={() => enroll.mutate()} disabled={enroll.isPending}>
+            Configurer
+          </button>
+          <ErrorText error={error} />
+        </>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            verify.mutate();
+          }}
+          style={{ display: 'grid', gap: 8 }}
+        >
+          <p className="muted">
+            Dans votre application, ajoutez un compte via « Saisir une clé manuellement » avec :
+          </p>
+          <p>
+            Compte : <b>{'Okapi Logistics'}</b>
+            <br />
+            Clé secrète :{' '}
+            <code style={{ userSelect: 'all', wordBreak: 'break-all' }}>{enrollment.secret}</code>
+          </p>
+          <div className="field">
+            <label>Code à 6 chiffres affiché par l'application</label>
+            <input
+              inputMode="numeric"
+              pattern="\d{6}"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              required
+            />
+          </div>
+          <ErrorText error={error} />
+          <button className="btn primary" type="submit" disabled={verify.isPending || otp.length !== 6}>
+            Activer
+          </button>
+        </form>
+      )}
+    </div>
   );
 }

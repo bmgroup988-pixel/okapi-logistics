@@ -134,3 +134,12 @@ export function permissionsForRoles(roles: RoleCode[]): Set<Permission> {
   for (const r of roles) for (const p of ROLE_PERMISSIONS[r] ?? []) out.add(p);
   return out;
 }
+
+/**
+ * Rôles pour lesquels la double authentification (TOTP) est obligatoire —
+ * décision produit 2026-09-23 : les comptes à pouvoirs étendus (accès total
+ * ou financier) doivent être protégés par MFA, pas seulement mot de passe.
+ * Appliqué par MfaEnforcementGuard côté API ; utilisé côté back-office pour
+ * rediriger vers la page de configuration MFA tant que ce n'est pas fait.
+ */
+export const MFA_REQUIRED_ROLES: RoleCode[] = ['SUPER_ADMIN', 'ADMIN_DAF'];
