@@ -27,6 +27,9 @@
     "infra:up:minio": "docker compose -f infra/docker-compose.yml up -d minio createbucket",
     "infra:down": "docker compose -f infra/docker-compose.yml down"
   },
+  "overrides": {
+    "multer": "2.4.0"
+  },
   "allowScripts": {
     "@prisma/client@6.19.3": true,
     "@prisma/engines@6.19.3": true,
