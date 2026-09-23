@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NotificationTrigger } from '@prisma/client';
-import { PARCEL_STATUS_LABELS, renderTemplate, resolveLocale } from '@okapi/shared';
+import { PARCEL_STATUS_LABELS, PICKUP_DEADLINE_REMINDER, renderTemplate, resolveLocale } from '@okapi/shared';
 import type { Env } from '../config/env.schema';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -42,6 +42,9 @@ export class NotificationsService {
       ville_destination: parcel.destinationCity.code,
       ville_actuelle: parcel.destinationCity.code,
       lien_suivi: `${trackingBase}/${locale}/suivi/${parcel.trackingNumber}`,
+      // Rappel du délai de retrait (72h / 3 jours) — uniquement pertinent une
+      // fois le colis arrivé à l'agence, vide sinon (voir PICKUP_DEADLINE_REMINDER).
+      delai_recuperation: parcel.status === 'ARRIVE' ? PICKUP_DEADLINE_REMINDER[locale] : '',
       ...extraVars,
     };
 
