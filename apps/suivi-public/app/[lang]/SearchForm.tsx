@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Locale } from '../../lib/i18n';
-
-const TRACKING_FORMAT = /^OKP\d{8}[A-Z]{3}$/;
+import { TRACKING_FORMAT } from '../../lib/api';
 
 export function SearchForm({
   lang,

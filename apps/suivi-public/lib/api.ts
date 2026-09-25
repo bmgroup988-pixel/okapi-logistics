@@ -47,7 +47,10 @@ export type TrackingResult =
 // Accepte le format actuel (OKP + JJMMAA + séquentiel 4+ chiffres + ville,
 // 10+ chiffres) et l'ancien format pré-2026-09-22 (OKP + AAMM + séquentiel
 // 4+ chiffres + ville, 8+ chiffres) — les numéros déjà émis restent valides.
-const TRACKING_FORMAT = /^OKP\d{8,}[A-Z]{3}$/;
+// Source unique — voir SearchForm.tsx, qui l'importe plutôt que de dupliquer
+// sa propre copie (une regex différente ici avait bloqué la recherche des
+// numéros au nouveau format, incident du 2026-09-25).
+export const TRACKING_FORMAT = /^OKP\d{8,}[A-Z]{3}$/;
 
 export async function fetchTracking(trackingNumberRaw: string): Promise<TrackingResult> {
   const trackingNumber = trackingNumberRaw.trim().toUpperCase();
