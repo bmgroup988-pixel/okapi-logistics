@@ -187,3 +187,8 @@ table.data tr.clickable:hover td { background: var(--surface-2); }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
 .tabs button { border: 1px solid transparent; border-bottom: 0; background: transparent; padding: 8px 14px; border-radius: 8px 8px 0 0; color: var(--mute); cursor: pointer; }
 .tabs button.active { background: var(--surface); border-color: var(--line); color: var(--ink); font-weight: 600; margin-bottom: -1px; }
+
+.okapi-spinner-wrap { display: flex; align-items: center; gap: 10px; padding: 12px 0; }
+.okapi-spinner { width: 28px; height: 28px; animation: okapi-spin 1.1s linear infinite; }
+@keyframes okapi-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .okapi-spinner { animation: none; } }

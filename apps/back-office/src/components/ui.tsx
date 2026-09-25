@@ -139,5 +139,10 @@ export function ErrorText({ error }: { error: unknown }) {
 }
 
 export function Loading() {
-  return <p className="muted">Chargement…</p>;
+  return (
+    <div className="okapi-spinner-wrap" role="status" aria-label="Chargement en cours">
+      <img src="/okapi-o-mark.png" alt="" className="okapi-spinner" />
+      <span className="muted">Chargement…</span>
+    </div>
+  );
 }

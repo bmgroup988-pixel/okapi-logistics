@@ -3,20 +3,25 @@ import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const NAVY = '#170655';
-const ORANGE = '#E47911';
 
-function svg(size, { maskable = false } = {}) {
-  const pad = maskable ? size * 0.16 : size * 0.06;
+const markPath = fileURLToPath(new URL('../assets/brand/okapi-o-mark.png', import.meta.url));
+
+/** Fond navy arrondi + le vrai logo « O » Okapi centré dessus. */
+async function iconBuffer(size, { maskable = false } = {}) {
   const r = size * 0.22;
-  const cx = size / 2;
-  const cy = size / 2;
-  const d = size * 0.34;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <rect x="0" y="0" width="${size}" height="${size}" rx="${r}" fill="${NAVY}"/>
-    <g transform="translate(${cx} ${cy}) rotate(45)">
-      <rect x="${-d / 2}" y="${-d / 2}" width="${d}" height="${d}" rx="${size * 0.03}" fill="${ORANGE}"/>
-    </g>
-  </svg>`;
+  const bg = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <rect x="0" y="0" width="${size}" height="${size}" rx="${r}" fill="${NAVY}"/>
+    </svg>`,
+  );
+  // Zone de sécurité plus large pour les icônes maskable (recadrées en
+  // cercle/squircle par l'OS) — voir W3C manifest "purpose: maskable".
+  const markSize = Math.round(size * (maskable ? 0.62 : 0.8));
+  const mark = await sharp(markPath).resize(markSize, markSize).toBuffer();
+  return sharp(bg)
+    .composite([{ input: mark, gravity: 'center' }])
+    .png()
+    .toBuffer();
 }
 
 const outDir = new URL('../apps/back-office/public/icons/', import.meta.url);
@@ -30,7 +35,7 @@ const targets = [
 ];
 
 for (const t of targets) {
-  const buf = Buffer.from(svg(t.size, { maskable: t.maskable }));
-  await sharp(buf).png().toFile(fileURLToPath(new URL(t.file, outDir)));
+  const buf = await iconBuffer(t.size, { maskable: t.maskable });
+  await sharp(buf).toFile(fileURLToPath(new URL(t.file, outDir)));
   console.log('wrote', t.file);
 }

@@ -34,7 +34,7 @@ export function App() {
     return (
       <div className="login-wrap">
         <div className="login-center">
-          <p className="muted">Chargement…</p>
+          <img src="/okapi-o-mark.png" alt="" className="okapi-spinner" style={{ width: 56, height: 56 }} />
         </div>
       </div>
     );

@@ -443,3 +443,8 @@ footer .copyright {
     --mute: #a5a3b4;
   }
 }
+
+.okapi-loading-page { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
+.okapi-spinner { width: 56px; height: 56px; animation: okapi-spin 1.1s linear infinite; }
+@keyframes okapi-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .okapi-spinner { animation: none; } }
