@@ -13,9 +13,21 @@ import { presignS3Url } from './sigv4';
 export class StorageService {
   constructor(private readonly config: ConfigService<Env, true>) {}
 
-  private opts() {
+  /**
+   * `internal: true` → URL signée pour un appel fait PAR le serveur lui-même
+   * (ex. `putObject`, qui dépose un PDF généré) : utilise S3_ENDPOINT, joignable
+   * uniquement depuis le réseau Docker interne.
+   * `internal: false` (défaut) → URL destinée à être renvoyée au navigateur
+   * (upload direct d'une photo, lien de téléchargement d'un document) :
+   * utilise S3_PUBLIC_ENDPOINT, une adresse joignable depuis Internet — sans
+   * ça, le navigateur du client ne peut pas atteindre l'URL signée. En local,
+   * les deux pointent par défaut vers la même adresse (MinIO exposé sur
+   * l'hôte via docker-compose.yml).
+   */
+  private opts(internal = false) {
+    const endpointKey = internal ? 'S3_ENDPOINT' : 'S3_PUBLIC_ENDPOINT';
     return {
-      endpoint: this.config.get('S3_ENDPOINT', { infer: true }).replace(/\/+$/, ''),
+      endpoint: this.config.get(endpointKey, { infer: true }).replace(/\/+$/, ''),
       region: this.config.get('S3_REGION', { infer: true }),
       bucket: this.config.get('S3_BUCKET', { infer: true }),
       accessKey: this.config.get('S3_ACCESS_KEY', { infer: true }),
@@ -41,7 +53,8 @@ export class StorageService {
 
   /** Dépose un objet côté serveur via l'URL PUT signée (documents PDF générés). */
   async putObject(key: string, body: Uint8Array, contentType: string): Promise<void> {
-    const { url } = this.presignPut(key, 300);
+    const o = this.opts(true);
+    const url = presignS3Url({ method: 'PUT', key, expiresSeconds: 300, ...o });
     const res = await fetch(url, {
       method: 'PUT',
       body: Buffer.from(body),

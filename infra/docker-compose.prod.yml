@@ -63,8 +63,25 @@ services:
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
     volumes:
       - okapi-minio:/data
-    # À remplacer par OVHcloud Object Storage en changeant S3_ENDPOINT dans
-    # le service `api` — aucune modification de code nécessaire.
+    # À remplacer par OVHcloud Object Storage en changeant S3_ENDPOINT/
+    # S3_PUBLIC_ENDPOINT dans le service `api` — aucune modification de code
+    # nécessaire (à ce moment-là, les labels Traefik ci-dessous deviennent
+    # inutiles puisque le stockage sera déjà public par nature).
+    #
+    # Exposition publique du bucket (nécessaire pour que le navigateur du
+    # client puisse suivre les URL S3 signées — upload direct d'une photo,
+    # téléchargement d'un document) : uniquement le préfixe /okapi-photos
+    # sur le domaine de l'API, chemin transmis tel quel (pas de strip) pour
+    # que la signature SigV4 (calculée sur ce même chemin par l'API) reste
+    # valide côté MinIO. Priorité plus haute que le routeur `okapi-api`
+    # (Host seul) pour être sûr de gagner sur ce préfixe précis.
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.okapi-minio.rule=Host(`${API_DOMAIN}`) && PathPrefix(`/okapi-photos`)
+      - traefik.http.routers.okapi-minio.entrypoints=websecure
+      - traefik.http.routers.okapi-minio.tls.certresolver=le
+      - traefik.http.routers.okapi-minio.priority=100
+      - traefik.http.services.okapi-minio.loadbalancer.server.port=9000
 
   createbucket:
     image: quay.io/minio/mc:latest
@@ -93,6 +110,12 @@ services:
       CORS_ORIGINS: https://${SUIVI_DOMAIN},https://${BACKOFFICE_DOMAIN}
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/okapi?schema=public
       S3_ENDPOINT: http://minio:9000
+      # Les URL signées données au navigateur (upload photo, téléchargement
+      # document) doivent pointer vers une adresse joignable depuis Internet
+      # — http://minio:9000 (interne au réseau Docker) ne l'est pas. Exposé
+      # via Traefik sous ce même domaine, préfixe /okapi-photos (voir le
+      # service `minio` ci-dessous).
+      S3_PUBLIC_ENDPOINT: https://${API_DOMAIN}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_BUCKET: okapi-photos
@@ -115,6 +138,7 @@ services:
       - traefik.http.routers.okapi-api.rule=Host(`${API_DOMAIN}`)
       - traefik.http.routers.okapi-api.entrypoints=websecure
       - traefik.http.routers.okapi-api.tls.certresolver=le
+      - traefik.http.routers.okapi-api.priority=1
       - traefik.http.services.okapi-api.loadbalancer.server.port=3000
 
   back-office:

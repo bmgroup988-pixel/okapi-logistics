@@ -12,6 +12,12 @@ export const envSchema = z.object({
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
   S3_ENDPOINT: z.string().url().default('http://localhost:9000'),
+  // Adresse utilisée dans les URL signées renvoyées au navigateur (upload
+  // direct d'une photo, téléchargement d'un document) — doit être joignable
+  // depuis Internet, contrairement à S3_ENDPOINT (réseau Docker interne en
+  // prod). En local, les deux valeurs par défaut coïncident (MinIO exposé
+  // sur l'hôte). Voir StorageService.opts().
+  S3_PUBLIC_ENDPOINT: z.string().url().default('http://localhost:9000'),
   S3_REGION: z.string().default('eu-west-par'),
   S3_BUCKET: z.string().default('okapi-photos'),
   S3_ACCESS_KEY: z.string().default('minioadmin'),
