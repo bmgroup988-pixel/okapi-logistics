@@ -49,6 +49,13 @@ services:
 
   minio:
     image: quay.io/minio/minio:latest
+    # N'essaie de re-tirer l'image que si elle est absente en local — quay.io
+    # limite/bloque parfois les pulls anonymes (401) sur cette image très
+    # populaire ; une image tierce qui ne change jamais entre nos déploiements
+    # ne doit jamais bloquer la mise à jour de nos propres images (voir
+    # incident du 2026-09-25, déploiement échoué alors qu'aucun code
+    # applicatif n'était en cause).
+    pull_policy: missing
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -61,6 +68,7 @@ services:
 
   createbucket:
     image: quay.io/minio/mc:latest
+    pull_policy: missing
     depends_on:
       - minio
     restart: "no"
