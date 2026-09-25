@@ -1,6 +1,6 @@
 # 06 — Manuel de l'agent fret
 
-Version 1.0 — 2026-09-03
+Version 1.1 — 2026-09-23
 Public : agent fret et assistant fret en agence.
 Vous n'avez besoin d'aucune connaissance technique pour utiliser ce manuel.
 
@@ -20,7 +20,9 @@ Vous n'avez besoin d'aucune connaissance technique pour utiliser ce manuel.
 10. [Cas particuliers](#10-cas-particuliers)
 11. [Ce que voit le client](#11-ce-que-voit-le-client)
 12. [Bonnes pratiques et erreurs fréquentes](#12-bonnes-pratiques-et-erreurs-frequentes)
-13. [Aide](#13-aide)
+13. [Groupages (suivi de transit par lot)](#13-groupages-suivi-de-transit-par-lot)
+14. [Enregistrer un colis pour un fournisseur](#14-enregistrer-un-colis-pour-un-fournisseur)
+15. [Aide](#15-aide)
 
 ---
 
@@ -210,7 +212,7 @@ Statuts et effets :
 | Passage à… | Effet |
 |------------|-------|
 | **En transit** | Les photos deviennent **verrouillées** (non modifiables). |
-| **Arrivé** | Si le colis est impayé ou partiellement payé, une **relance** est envoyée au client. |
+| **Arrivé** | Le client reçoit automatiquement un rappel : délai de retrait de **72h (3 jours) maximum**, au-delà des **frais d'entreposage de 5$/jour** s'appliquent. Si le colis est impayé ou partiellement payé, une **relance** est envoyée en plus. |
 | **Livré** | Notification de livraison au client. **Voir la règle « impayé » ci-dessous.** |
 
 ### Livrer un colis non soldé
@@ -303,7 +305,46 @@ transaction, les adresses, les téléphones.
 
 ---
 
-## 13. Aide
+## 13. Groupages (suivi de transit par lot)
+
+Un **groupage** rassemble plusieurs colis (d'un même fournisseur ou déposés au comptoir)
+qui voyagent ensemble vers une **agence de destination** commune. Ça sert uniquement au
+**suivi de transit par lot** — ce n'est pas de la facturation : chaque colis garde son
+propre montant dû et son propre statut de paiement.
+
+1. Menu **« Groupages »** → **« Nouveau groupage »**.
+2. Choisissez l'**agence de destination** dans le menu déroulant.
+3. Ajoutez les colis : tapez dans le champ de recherche un numéro de suivi (complet ou
+   partiel, ex. « 0043 FIH ») ou un nom — seuls les colis **pas déjà dans un autre
+   groupage ouvert** apparaissent.
+4. Une fois tous les colis ajoutés, enregistrez.
+
+Le groupage garde un **statut global** (ouvert, en transit, arrivé) qui vient s'ajouter
+au statut individuel de chaque colis — faire avancer le groupage ne change **pas**
+automatiquement le statut de chaque colis un par un, c'est un suivi de lot séparé.
+
+---
+
+## 14. Enregistrer un colis pour un fournisseur
+
+Un fournisseur dépose parfois ses colis **physiquement à l'agence** sans passer par son
+propre portail en ligne. Dans ce cas, c'est vous qui enregistrez pour lui :
+
+1. Menu **« Colis fournisseur »** (visible seulement si votre compte a ce droit).
+2. Choisissez le **fournisseur** concerné dans la liste.
+3. Enregistrez le colis comme d'habitude (§3) — il est automatiquement rattaché à
+   l'expédition en cours de ce fournisseur.
+4. C'est toujours le fournisseur (ou l'administration en son nom) qui **clôture**
+   l'expédition et déclenche la facturation groupée, pas vous.
+
+> Cet outil est réservé au personnel interne. Un compte fournisseur ne peut jamais
+> l'atteindre, même par erreur — l'ajout de colis et la clôture depuis le portail
+> fournisseur en libre-service sont volontairement désactivés (docs/11 §6.2) : c'est
+> l'agence qui enregistre pour lui.
+
+---
+
+## 15. Aide
 
 - Problème de compte (mot de passe, code de vérification) : votre **administration**.
 - Problème technique persistant (upload, page qui ne charge pas) : signalez-le à
