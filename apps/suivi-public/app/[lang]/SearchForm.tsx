@@ -53,8 +53,20 @@ export function SearchForm({
           if (error) setError(null);
         }}
       />
-      <button className="primary" type="submit" disabled={busy}>
-        {busy ? '…' : submit}
+      <button
+        className="primary"
+        type="submit"
+        disabled={busy}
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+      >
+        {busy ? (
+          <span className="okapi-loader" style={{ width: 18, height: 18 }} role="status" aria-label="Recherche en cours">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/okapi-o-mark-white.png" alt="" className="okapi-loader-mark" />
+          </span>
+        ) : (
+          submit
+        )}
       </button>
       {error ? (
         <span id="tracking-error" className="field-error" role="alert">

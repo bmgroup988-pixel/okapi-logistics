@@ -4,7 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 const NAVY = '#170655';
 
-const markPath = fileURLToPath(new URL('../assets/brand/okapi-o-mark.png', import.meta.url));
+// Version blanche du logo — meilleur contraste/lisibilité sur le fond navy
+// des icônes que la version orange d'origine (docs/registre 2026-09-25).
+const markPath = fileURLToPath(new URL('../assets/brand/okapi-o-mark-white.png', import.meta.url));
 
 /** Fond navy arrondi + le vrai logo « O » Okapi centré dessus. */
 async function iconBuffer(size, { maskable = false } = {}) {

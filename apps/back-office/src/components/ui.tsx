@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useCityLookup } from '../lib/geo';
+import { OkapiLoader } from './OkapiLoader';
 
 /** Code ville + nom complet en gris, miniature — identification facile (ex. "FIH (Kinshasa)"). */
 export function CityLabel({ code }: { code: string | null | undefined }) {
@@ -140,8 +141,8 @@ export function ErrorText({ error }: { error: unknown }) {
 
 export function Loading() {
   return (
-    <div className="okapi-spinner-wrap" role="status" aria-label="Chargement en cours">
-      <img src="/okapi-o-mark.png" alt="" className="okapi-spinner" />
+    <div className="okapi-spinner-wrap">
+      <OkapiLoader />
       <span className="muted">Chargement…</span>
     </div>
   );

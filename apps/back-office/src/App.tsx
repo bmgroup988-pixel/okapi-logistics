@@ -15,6 +15,7 @@ import { Cities } from './pages/Cities';
 import { DeliveryPartners } from './pages/DeliveryPartners';
 import { PartnerSettlements } from './pages/PartnerSettlements';
 import { Suppliers } from './pages/Suppliers';
+import { OkapiLoader } from './components/OkapiLoader';
 import { SupplierPortal } from './pages/SupplierPortal';
 import { Profile } from './pages/Profile';
 import { Carriers } from './pages/Carriers';
@@ -34,7 +35,7 @@ export function App() {
     return (
       <div className="login-wrap">
         <div className="login-center">
-          <img src="/okapi-o-mark.png" alt="" className="okapi-spinner" style={{ width: 56, height: 56 }} />
+          <OkapiLoader variant="boot" />
         </div>
       </div>
     );

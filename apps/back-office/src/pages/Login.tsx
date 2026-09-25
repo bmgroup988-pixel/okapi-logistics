@@ -4,6 +4,7 @@ import { useT } from '../lib/i18n';
 import { ApiError } from '../lib/api';
 import { useApplyBrandColors, useBranding } from '../lib/branding';
 import { Footer } from '../components/Footer';
+import { OkapiLoader } from '../components/OkapiLoader';
 
 export function Login() {
   const { login } = useAuth();
@@ -80,8 +81,19 @@ export function Login() {
             />
           </div>
         )}
-        <button className="btn primary" style={{ width: '100%' }} disabled={busy}>
-          {busy ? '…' : t('auth.login')}
+        <button
+          className="btn primary"
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          disabled={busy}
+        >
+          {busy ? (
+            <>
+              <OkapiLoader size={18} tone="white" label="Connexion en cours" />
+              <span>Connexion…</span>
+            </>
+          ) : (
+            t('auth.login')
+          )}
         </button>
         {error && <p className="error">{error}</p>}
         <p className="muted" style={{ fontSize: 12, marginTop: 14 }}>

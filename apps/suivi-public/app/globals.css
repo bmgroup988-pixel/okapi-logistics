@@ -445,6 +445,26 @@ footer .copyright {
 }
 
 .okapi-loading-page { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
-.okapi-spinner { width: 56px; height: 56px; animation: okapi-spin 1.1s linear infinite; }
 @keyframes okapi-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .okapi-spinner { animation: none; } }
+
+/* Logo animé — halo pulsant + entrée en fondu/zoom, puis rotation continue. */
+.okapi-loader { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; }
+.okapi-loader-mark {
+  width: 100%; height: 100%;
+  animation: okapi-loader-in 480ms cubic-bezier(.34, 1.56, .64, 1) both,
+             okapi-spin 1.6s linear infinite 480ms;
+}
+.okapi-loader-ring {
+  position: absolute; inset: -30%; border-radius: 50%;
+  border: 2px solid var(--orange);
+  animation: okapi-ring-pulse 1.8s ease-out infinite;
+}
+@keyframes okapi-loader-in { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: scale(1); } }
+@keyframes okapi-ring-pulse {
+  0% { transform: scale(.55); opacity: .55; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .okapi-loader-mark { animation: none; }
+  .okapi-loader-ring { animation: none; display: none; }
+}
