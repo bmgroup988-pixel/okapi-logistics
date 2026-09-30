@@ -219,7 +219,7 @@ export function ParcelDetail() {
             <tbody>
               {(docs.data ?? []).map((d) => (
                 <tr key={d.id}>
-                  <td>{d.type}</td>
+                  <td>{DOC_TYPE_LABELS[d.type] ?? d.type}</td>
                   <td className="mono">{d.number ?? '—'}</td>
                   <td className="muted">{new Date(d.generatedAt).toLocaleString('fr')}</td>
                   <td>
@@ -554,6 +554,15 @@ interface CarrierOption {
   id: string;
   name: string;
 }
+
+/** Libellés FR des types de documents générés (BillingService, DocumentType). */
+const DOC_TYPE_LABELS: Record<string, string> = {
+  LABEL: 'Étiquette',
+  REGISTRATION_RECEIPT: "Reçu d'enregistrement",
+  PAYMENT_RECEIPT: 'Reçu de paiement',
+  INVOICE: 'Facture',
+  CREDIT_NOTE: 'Avoir',
+};
 
 /** Statuts atteignables depuis chaque statut — miroir de PARCEL_STATUS_FLOW (@okapi/shared). */
 const NEXT: Record<string, string[]> = {
