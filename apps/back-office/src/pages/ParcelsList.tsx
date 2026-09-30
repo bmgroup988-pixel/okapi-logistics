@@ -17,6 +17,9 @@ export function ParcelsList() {
       api<Paginated<ParcelSummary>>('/parcels', {
         query: { q, status, paymentStatus, page, limit: 25, sort: '-createdAt' },
       }),
+    // Liste "à suivre en direct" — voir un colis enregistré par un agent
+    // sans avoir à recharger la page.
+    refetchInterval: 5_000,
   });
 
   return (

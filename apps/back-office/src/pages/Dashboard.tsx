@@ -4,11 +4,17 @@ import { api } from '../lib/api';
 import type { Paginated, ParcelSummary } from '../lib/types';
 import { CityPair, Pill, statusKind, paymentKind, Loading } from '../components/ui';
 
+// Tableau de bord = écran "à suivre en direct" (DAF/super-admin) — chiffres
+// et derniers colis rafraîchis toutes les 5s pendant que l'onglet est actif,
+// pour voir sans délai ce qu'un agent vient d'enregistrer ailleurs.
+const LIVE_REFETCH_MS = 5_000;
+
 function useCount(query: Record<string, string>) {
   return useQuery({
     queryKey: ['parcels-count', query],
     queryFn: () => api<Paginated<ParcelSummary>>('/parcels', { query: { ...query, limit: 1 } }),
     select: (r) => r.page.total,
+    refetchInterval: LIVE_REFETCH_MS,
   });
 }
 
@@ -23,6 +29,7 @@ export function Dashboard() {
   const recent = useQuery({
     queryKey: ['parcels-recent'],
     queryFn: () => api<Paginated<ParcelSummary>>('/parcels', { query: { limit: 8, sort: '-createdAt' } }),
+    refetchInterval: LIVE_REFETCH_MS,
   });
 
   return (

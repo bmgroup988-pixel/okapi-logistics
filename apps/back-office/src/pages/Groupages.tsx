@@ -172,6 +172,7 @@ export function Groupages() {
   const groupages = useQuery({
     queryKey: ['groupages'],
     queryFn: () => api<GroupageSummary[]>('/groupages'),
+    refetchInterval: 5_000,
   });
 
   return (
@@ -249,6 +250,7 @@ export function GroupageDetail() {
   const groupage = useQuery({
     queryKey: ['groupage', id],
     queryFn: () => api<GroupageDetail>(`/groupages/${id}`),
+    refetchInterval: 5_000,
   });
 
   const availableParcels = useQuery({
