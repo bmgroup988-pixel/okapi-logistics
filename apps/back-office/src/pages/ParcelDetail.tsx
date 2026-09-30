@@ -558,7 +558,10 @@ interface CarrierOption {
 /** Statuts atteignables depuis chaque statut — miroir de PARCEL_STATUS_FLOW (@okapi/shared). */
 const NEXT: Record<string, string[]> = {
   ENREGISTRE: ['EN_TRANSIT'],
-  EN_TRANSIT: ['ARRIVE', 'RETOURNE'],
+  // EN_TRANSIT -> EN_TRANSIT : pas un changement de phase, juste un nouveau
+  // point de passage (2e, 3e... ville/pays de transit) — voir le même
+  // commentaire sur PARCEL_STATUS_FLOW côté @okapi/shared.
+  EN_TRANSIT: ['EN_TRANSIT', 'ARRIVE', 'RETOURNE'],
   ARRIVE: ['LIVRE', 'HANDED_TO_PARTNER', 'RETOURNE'],
   HANDED_TO_PARTNER: ['LIVRE', 'RETOURNE'],
   RETOURNE: ['ARRIVE'],

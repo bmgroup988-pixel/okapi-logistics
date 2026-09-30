@@ -104,7 +104,12 @@ export type ShipmentStatus = (typeof SHIPMENT_STATUSES)[number];
  */
 export const PARCEL_STATUS_FLOW: Record<ParcelStatus, ParcelStatus[]> = {
   ENREGISTRE: ['EN_TRANSIT', 'ANNULE'],
-  EN_TRANSIT: ['ARRIVE', 'RETOURNE'],
+  // EN_TRANSIT -> EN_TRANSIT (auto-transition) : pas un changement de phase,
+  // juste un nouveau point de passage (ex. colis vu dans une 2e, 3e... ville/
+  // pays de transit) — même statut affiché au client, un événement
+  // d'historique de plus avec son propre `locationLabel`, déjà listés en
+  // totalité sur la page de suivi (décision produit 2026-09-30).
+  EN_TRANSIT: ['EN_TRANSIT', 'ARRIVE', 'RETOURNE'],
   ARRIVE: ['LIVRE', 'HANDED_TO_PARTNER', 'RETOURNE'],
   HANDED_TO_PARTNER: ['LIVRE', 'RETOURNE'],
   RETOURNE: ['ARRIVE'],
