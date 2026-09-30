@@ -4,6 +4,7 @@ import { useT } from '../lib/i18n';
 import { ApiError } from '../lib/api';
 import { useApplyBrandColors, useBranding } from '../lib/branding';
 import { Footer } from '../components/Footer';
+import { InstallPrompt } from '../components/InstallPrompt';
 import { OkapiLoader } from '../components/OkapiLoader';
 
 export function Login() {
@@ -39,6 +40,7 @@ export function Login() {
   return (
     <div className="login-wrap">
       <div className="login-center">
+      <InstallPrompt />
       <form className="login-card" onSubmit={submit}>
         {branding?.logoUrl ? (
           <img src={branding.logoUrl} alt="Logo" className="logo" style={{ objectFit: 'contain', background: '#fff' }} />
@@ -96,9 +98,6 @@ export function Login() {
           )}
         </button>
         {error && <p className="error">{error}</p>}
-        <p className="muted" style={{ fontSize: 12, marginTop: 14 }}>
-          Démo : admin@okapi.example / a.boni@okapi.example
-        </p>
       </form>
       </div>
       <Footer />

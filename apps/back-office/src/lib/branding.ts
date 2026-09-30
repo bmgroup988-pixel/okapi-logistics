@@ -53,7 +53,17 @@ const CSS_VARS: Record<keyof BrandColors, string> = {
   err: '--err',
 };
 
-/** Applique toutes les couleurs configurées comme variables CSS (EF-CFG-01) — palette entièrement personnalisable. */
+/**
+ * Applique les couleurs configurées comme variables CSS (EF-CFG-01) —
+ * palette entièrement personnalisable. Ne touche PLUS à la favicon/à
+ * l'icône PWA/apple-touch-icon (fait jusqu'au 2026-09-30) : le logo
+ * uploadé par un admin est une photo quelconque, pas forcément carrée ni
+ * optimisée — utilisée telle quelle en favicon, elle s'affichait cassée ou
+ * invisible dans la barre d'adresse et donnait une icône d'app moche/floue
+ * une fois installée sur téléphone. Les icônes statiques générées (voir
+ * scripts/generate-pwa-icons.mjs) restent la seule source, toujours
+ * correctement dimensionnées/carrées.
+ */
 export function useApplyBrandColors() {
   const { data } = useBranding();
   useEffect(() => {
@@ -65,18 +75,6 @@ export function useApplyBrandColors() {
       }
     }
   }, [data]);
-  useEffect(() => {
-    if (!data?.logoUrl) return;
-    for (const rel of ['icon', 'apple-touch-icon']) {
-      let link = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = rel;
-        document.head.appendChild(link);
-      }
-      link.href = data.logoUrl;
-    }
-  }, [data?.logoUrl]);
 }
 
 export function whatsappHref(number: string): string {
