@@ -1,11 +1,15 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Req } from '@nestjs/common';
 import {
+  photoConfirmSchema,
   supplierInvoiceSendEmailSchema,
   supplierPortalParcelCreateSchema,
+  supplierPortalPricePreviewSchema,
   type SupplierInvoiceSendEmailInput,
   type SupplierPortalParcelCreateInput,
+  type SupplierPortalPricePreviewInput,
 } from '@okapi/shared';
 import type { Request } from 'express';
+import { z } from 'zod';
 import type { CurrentUser as CurrentUserType } from '../auth/current-user';
 import { CurrentUser, RequirePermissions } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -43,6 +47,37 @@ export class SupplierPortalController {
     @Req() req: Request,
   ) {
     return this.portal.addParcel(id, body, user, req.requestId);
+  }
+
+  @Post('shipments/price-preview')
+  @RequirePermissions('supplier-parcel:create')
+  previewPrice(
+    @Body(new ZodValidationPipe(supplierPortalPricePreviewSchema)) body: SupplierPortalPricePreviewInput,
+    @CurrentUser() user: CurrentUserType,
+  ) {
+    return this.portal.previewPriceSelf(body, user);
+  }
+
+  @Post('shipments/:id/parcels/:parcelId/photos/presign')
+  @RequirePermissions('supplier-parcel:create')
+  presignParcelPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('parcelId', ParseUUIDPipe) parcelId: string,
+    @CurrentUser() user: CurrentUserType,
+  ) {
+    return this.portal.presignParcelPhoto(id, parcelId, user);
+  }
+
+  @Post('shipments/:id/parcels/:parcelId/photos')
+  @RequirePermissions('supplier-parcel:create')
+  confirmParcelPhoto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('parcelId', ParseUUIDPipe) parcelId: string,
+    @Body(new ZodValidationPipe(photoConfirmSchema)) body: z.infer<typeof photoConfirmSchema>,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+  ) {
+    return this.portal.confirmParcelPhoto(id, parcelId, body, user, req.requestId);
   }
 
   @Delete('shipments/:id/parcels/:parcelId')

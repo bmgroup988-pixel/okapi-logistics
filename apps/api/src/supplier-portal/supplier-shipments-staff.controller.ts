@@ -1,9 +1,13 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Req } from '@nestjs/common';
 import {
+  photoConfirmSchema,
   supplierPortalParcelCreateSchema,
+  supplierPortalPricePreviewSchema,
   type SupplierPortalParcelCreateInput,
+  type SupplierPortalPricePreviewInput,
 } from '@okapi/shared';
 import type { Request } from 'express';
+import { z } from 'zod';
 import type { CurrentUser as CurrentUserType } from '../auth/current-user';
 import { CurrentUser, RequirePermissions } from '../auth/decorators';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -63,6 +67,37 @@ export class SupplierShipmentsStaffController {
     @Req() req: Request,
   ) {
     return this.portal.addParcelForStaff(supplierId, shipmentId, body, user, req.requestId);
+  }
+
+  @Post(':supplierId/price-preview')
+  previewPrice(
+    @Param('supplierId', ParseUUIDPipe) supplierId: string,
+    @Body(new ZodValidationPipe(supplierPortalPricePreviewSchema)) body: SupplierPortalPricePreviewInput,
+    @CurrentUser() user: CurrentUserType,
+  ) {
+    return this.portal.previewPriceForStaff(supplierId, body, user);
+  }
+
+  @Post(':supplierId/shipments/:shipmentId/parcels/:parcelId/photos/presign')
+  presignParcelPhoto(
+    @Param('supplierId', ParseUUIDPipe) supplierId: string,
+    @Param('shipmentId', ParseUUIDPipe) shipmentId: string,
+    @Param('parcelId', ParseUUIDPipe) parcelId: string,
+    @CurrentUser() user: CurrentUserType,
+  ) {
+    return this.portal.presignParcelPhotoForStaff(supplierId, shipmentId, parcelId, user);
+  }
+
+  @Post(':supplierId/shipments/:shipmentId/parcels/:parcelId/photos')
+  confirmParcelPhoto(
+    @Param('supplierId', ParseUUIDPipe) supplierId: string,
+    @Param('shipmentId', ParseUUIDPipe) shipmentId: string,
+    @Param('parcelId', ParseUUIDPipe) parcelId: string,
+    @Body(new ZodValidationPipe(photoConfirmSchema)) body: z.infer<typeof photoConfirmSchema>,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+  ) {
+    return this.portal.confirmParcelPhotoForStaff(supplierId, shipmentId, parcelId, body, user, req.requestId);
   }
 
   @Delete(':supplierId/shipments/:shipmentId/parcels/:parcelId')

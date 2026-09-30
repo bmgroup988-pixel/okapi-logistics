@@ -365,11 +365,23 @@ export const supplierPortalParcelCreateSchema = z.object({
   destinationCityId: uuid,
   transportMode: z.enum(TRANSPORT_MODES).default('AIR'),
   weightKg: weightString,
-  /** Montant dû pour ce colis, dans la devise de facturation du fournisseur. */
-  amount: positiveDecimalString,
+  // Montant dû calculé automatiquement (poids × tarif destination), plus de
+  // saisie manuelle (décision produit 2026-09-30) — toujours facturé dans la
+  // devise du fournisseur (cohérence de la facture consolidée à la
+  // clôture). Pour un aperçu dans une autre devise avant validation, voir
+  // `supplierPortalPricePreviewSchema` (n'affecte jamais la facturation).
   contentNature: z.string().min(1).max(500).default('Colis fournisseur'),
 });
 export type SupplierPortalParcelCreateInput = z.infer<typeof supplierPortalParcelCreateSchema>;
+
+/** Aperçu du montant avant validation — mêmes critères que la création, devise au choix. */
+export const supplierPortalPricePreviewSchema = z.object({
+  destinationCityId: uuid,
+  transportMode: z.enum(TRANSPORT_MODES).default('AIR'),
+  weightKg: weightString,
+  currency: currencyCode.default('USD'),
+});
+export type SupplierPortalPricePreviewInput = z.infer<typeof supplierPortalPricePreviewSchema>;
 
 /** Envoi d'une facture fournisseur par e-mail — à défaut, l'e-mail de contact du fournisseur. */
 export const supplierInvoiceSendEmailSchema = z.object({

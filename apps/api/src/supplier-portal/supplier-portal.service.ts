@@ -9,6 +9,7 @@ import {
   humanizeNameKey,
   trackingPeriodKey,
   type SupplierPortalParcelCreateInput,
+  type SupplierPortalPricePreviewInput,
 } from '@okapi/shared';
 import { AuditService } from '../audit/audit.service';
 import type { CurrentUser } from '../auth/current-user';
@@ -16,6 +17,7 @@ import { currentSupplierId } from '../auth/scope';
 import { FxService } from '../fx/fx.service';
 import { NotificationDispatchService } from '../notifications/notification-dispatch.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PricingService } from '../pricing/pricing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SequenceService } from '../sequences/sequence.service';
 import { SettingsService } from '../settings/settings.service';
@@ -33,6 +35,7 @@ export class SupplierPortalService {
     private readonly audit: AuditService,
     private readonly sequences: SequenceService,
     private readonly fx: FxService,
+    private readonly pricing: PricingService,
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
     private readonly notifications: NotificationsService,
@@ -166,7 +169,7 @@ export class SupplierPortalService {
     const shipment = await this.requireOwnedShipment(shipmentId, supplier.id);
     const parcels = await this.prisma.parcel.findMany({
       where: { shipmentId: shipment.id },
-      include: { contacts: true, destinationCity: true },
+      include: { contacts: true, destinationCity: true, _count: { select: { photos: true } } },
       orderBy: { createdAt: 'asc' },
     });
     return {
@@ -184,9 +187,37 @@ export class SupplierPortalService {
           amountDue: p.amountDue.toString(),
           currency: p.billingCurrency,
           createdAt: p.createdAt.toISOString(),
+          hasPhoto: p._count.photos > 0,
         };
       }),
     };
+  }
+
+  /**
+   * Aperçu du montant (poids × tarif destination) dans la devise choisie,
+   * avant validation du formulaire — n'écrit rien, juste pour affichage
+   * ("Tarif : X/kg · Montant estimé : Y", comme l'enregistrement agence).
+   */
+  async previewPrice(supplier: Supplier, input: SupplierPortalPricePreviewInput) {
+    const agency = await this.prisma.agency.findUniqueOrThrow({ where: { id: supplier.defaultAgencyId } });
+    const quote = await this.pricing.quoteForParcel({
+      originCityId: agency.cityId,
+      destinationCityId: input.destinationCityId,
+      mode: input.transportMode,
+      weightKg: input.weightKg,
+    });
+    const converted = await this.fx.convert(quote.amount, quote.currency, input.currency);
+    return { amount: converted.amount, currency: input.currency, pricePerKg: quote.pricePerKg, tariffCurrency: quote.currency };
+  }
+
+  async previewPriceSelf(input: SupplierPortalPricePreviewInput, user: CurrentUser) {
+    const supplier = await this.requireSupplier(user);
+    return this.previewPrice(supplier, input);
+  }
+
+  async previewPriceForStaff(supplierId: string, input: SupplierPortalPricePreviewInput, user: CurrentUser) {
+    const supplier = await this.resolveSupplierForStaff(supplierId, user);
+    return this.previewPrice(supplier, input);
   }
 
   /* ------------------------------------------------------------------- colis */
@@ -236,7 +267,21 @@ export class SupplierPortalService {
     }
 
     const now = new Date();
-    const toRef = await this.fx.toReference(input.amount, supplier.billingCurrency, now);
+    // Montant calculé automatiquement (poids × tarif destination), plus de
+    // saisie manuelle — même moteur de tarification que l'enregistrement
+    // agence (PricingService). Toujours facturé dans la devise du
+    // fournisseur (cohérence de la facture consolidée à la clôture, qui
+    // additionne les montants de tous les colis de l'expédition) —
+    // `input.currency` ne sert qu'à l'aperçu affiché avant validation
+    // (voir `previewParcelPrice`), jamais à la devise de facturation.
+    const quote = await this.pricing.quoteForParcel({
+      originCityId: agency.cityId,
+      destinationCityId: destination.id,
+      mode: input.transportMode,
+      weightKg: input.weightKg,
+    });
+    const billed = await this.fx.convert(quote.amount, quote.currency, supplier.billingCurrency, now);
+    const toRef = await this.fx.toReference(billed.amount, supplier.billingCurrency, now);
 
     const seq = await this.sequences.next('tracking', destination.code, trackingPeriodKey(now));
     const trackingNumber = composeTrackingNumber({ at: now, seq, cityCode: destination.code });
@@ -257,13 +302,13 @@ export class SupplierPortalService {
           declaredValue: 0,
           declaredValueCurrency: supplier.billingCurrency,
           billingCurrency: supplier.billingCurrency,
-          amountDue: input.amount,
-          balance: input.amount,
+          amountDue: billed.amount,
+          balance: billed.amount,
           referenceCurrency: this.fx.referenceCurrency,
           amountDueReference: toRef.amount,
           fxRateDue: toRef.rate,
           exchangeRateIdDue: toRef.exchangeRateId,
-          pricingSnapshot: { source: 'supplier-portal', shipmentId: shipment.id, manualAmount: true },
+          pricingSnapshot: { source: 'supplier-portal', shipmentId: shipment.id, ...quote.snapshot },
           consentGiven: true,
           consentTextVersion: 'supplier-portal-v1',
           consentAt: now,
@@ -290,7 +335,7 @@ export class SupplierPortalService {
         data: {
           parcelCount: { increment: 1 },
           totalWeightKg: { increment: input.weightKg },
-          totalAmountDue: { increment: input.amount },
+          totalAmountDue: { increment: billed.amount },
           totalAmountDueReference: { increment: toRef.amount },
         },
       });
@@ -315,6 +360,91 @@ export class SupplierPortalService {
     }
 
     return { id: parcel.id, trackingNumber: parcel.trackingNumber };
+  }
+
+  /** Vérifie que `parcelId` appartient bien à une expédition de ce fournisseur — mêmes garanties que removeParcelCore. */
+  private async requireOwnedParcel(supplier: Supplier, shipmentId: string, parcelId: string) {
+    const shipment = await this.requireOwnedShipment(shipmentId, supplier.id);
+    const parcel = await this.prisma.parcel.findUnique({ where: { id: parcelId } });
+    if (!parcel || parcel.shipmentId !== shipment.id) {
+      throw new NotFoundException({ error: { code: API_ERROR_CODES.NOT_FOUND, message: 'Colis introuvable' } });
+    }
+    return parcel;
+  }
+
+  async presignParcelPhoto(shipmentId: string, parcelId: string, user: CurrentUser) {
+    const supplier = await this.requireSupplier(user);
+    await this.requireOwnedParcel(supplier, shipmentId, parcelId);
+    const key = this.storage.buildPhotoKey(parcelId);
+    return this.storage.presignPut(key);
+  }
+
+  async presignParcelPhotoForStaff(supplierId: string, shipmentId: string, parcelId: string, user: CurrentUser) {
+    const supplier = await this.resolveSupplierForStaff(supplierId, user);
+    await this.requireOwnedParcel(supplier, shipmentId, parcelId);
+    const key = this.storage.buildPhotoKey(parcelId);
+    return this.storage.presignPut(key);
+  }
+
+  private async confirmParcelPhotoCore(
+    parcelId: string,
+    body: { storageKey: string; sha256: string; bytes: number; mimeType: string; isPrimary: boolean },
+    user: CurrentUser,
+    requestId?: string | null,
+  ) {
+    const primaryExists = await this.prisma.parcelPhoto.count({ where: { parcelId, isPrimary: true } });
+    const makePrimary = body.isPrimary || primaryExists === 0;
+    const photo = await this.prisma.$transaction(async (tx) => {
+      if (makePrimary) {
+        await tx.parcelPhoto.updateMany({ where: { parcelId, isPrimary: true }, data: { isPrimary: false } });
+      }
+      return tx.parcelPhoto.create({
+        data: {
+          parcelId,
+          storageKey: body.storageKey,
+          sha256: body.sha256,
+          bytes: body.bytes,
+          mimeType: body.mimeType,
+          isPrimary: makePrimary,
+          exifStripped: false,
+          takenById: user.id,
+        },
+      });
+    });
+    await this.audit.record({
+      action: 'CREATE',
+      entityType: 'parcel_photo',
+      entityId: photo.id,
+      actorUserId: user.id,
+      requestId,
+      after: { parcelId, isPrimary: makePrimary, sha256: body.sha256 },
+    });
+    return { id: photo.id, isPrimary: photo.isPrimary };
+  }
+
+  async confirmParcelPhoto(
+    shipmentId: string,
+    parcelId: string,
+    body: { storageKey: string; sha256: string; bytes: number; mimeType: string; isPrimary: boolean },
+    user: CurrentUser,
+    requestId?: string | null,
+  ) {
+    const supplier = await this.requireSupplier(user);
+    await this.requireOwnedParcel(supplier, shipmentId, parcelId);
+    return this.confirmParcelPhotoCore(parcelId, body, user, requestId);
+  }
+
+  async confirmParcelPhotoForStaff(
+    supplierId: string,
+    shipmentId: string,
+    parcelId: string,
+    body: { storageKey: string; sha256: string; bytes: number; mimeType: string; isPrimary: boolean },
+    user: CurrentUser,
+    requestId?: string | null,
+  ) {
+    const supplier = await this.resolveSupplierForStaff(supplierId, user);
+    await this.requireOwnedParcel(supplier, shipmentId, parcelId);
+    return this.confirmParcelPhotoCore(parcelId, body, user, requestId);
   }
 
   async removeParcel(shipmentId: string, parcelId: string, user: CurrentUser, requestId?: string | null) {

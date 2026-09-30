@@ -5,6 +5,7 @@ import { api, uuid } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { useT } from '../lib/i18n';
 import type { City, ParcelDetail } from '../lib/types';
+import { sha256Hex } from '../lib/photo';
 import { CityLabel, ErrorText } from '../components/ui';
 
 interface CityRef extends City {
@@ -46,11 +47,6 @@ function Steps({ n }: { n: number }) {
       </span>
     </div>
   );
-}
-
-async function sha256Hex(buf: ArrayBuffer): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', buf);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 export function ParcelNew() {

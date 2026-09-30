@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useCities } from '../lib/geo';
+import { sha256Hex } from '../lib/photo';
 import { ErrorText, Loading, Modal, Pill } from '../components/ui';
+
+const CURRENCIES = ['USD', 'EUR', 'XOF', 'XAF', 'CDF', 'RWF', 'BIF', 'TZS', 'ZAR'];
 
 interface SupplierLite {
   id: string;
@@ -33,6 +36,7 @@ interface ShipmentParcel {
   weightKg: string;
   amountDue: string;
   currency: string;
+  hasPhoto: boolean;
 }
 
 interface ShipmentDetail extends Shipment {
@@ -58,8 +62,11 @@ function ShipmentDetailModal({
   const [recipientPhone, setRecipientPhone] = useState('');
   const [destinationCityId, setDestinationCityId] = useState('');
   const [weightKg, setWeightKg] = useState('');
-  const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('USD');
   const [error, setError] = useState<unknown>(null);
+  const [photoError, setPhotoError] = useState<unknown>(null);
+  const [uploadingPhotoFor, setUploadingPhotoFor] = useState<string | null>(null);
+  const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const base = `/staff/suppliers/${supplierId}/shipments/${id}`;
 
@@ -68,23 +75,32 @@ function ShipmentDetailModal({
     queryFn: () => api<ShipmentDetail>(base),
   });
 
+  const preview = useQuery({
+    queryKey: ['staff-supplier-price-preview', supplierId, destinationCityId, weightKg, currency],
+    queryFn: () =>
+      api<{ amount: string; currency: string; pricePerKg: string; tariffCurrency: string }>(
+        `/staff/suppliers/${supplierId}/price-preview`,
+        { method: 'POST', body: { destinationCityId, weightKg, currency } },
+      ),
+    enabled: !!destinationCityId && !!weightKg,
+    retry: false,
+  });
+
   const addParcel = useMutation({
     mutationFn: () =>
-      api(`${base}/parcels`, {
+      api<{ id: string; trackingNumber: string }>(`${base}/parcels`, {
         method: 'POST',
         body: {
           recipientName,
           recipientPhone: recipientPhone || undefined,
           destinationCityId,
           weightKg,
-          amount,
         },
       }),
     onSuccess: () => {
       setRecipientName('');
       setRecipientPhone('');
       setWeightKg('');
-      setAmount('');
       setError(null);
       void qc.invalidateQueries({ queryKey: ['staff-supplier-shipment', supplierId, id] });
       void qc.invalidateQueries({ queryKey: ['staff-supplier-shipments', supplierId] });
@@ -99,6 +115,40 @@ function ShipmentDetailModal({
       void qc.invalidateQueries({ queryKey: ['staff-supplier-shipments', supplierId] });
     },
   });
+
+  const uploadPhoto = async (parcelId: string, file: File | undefined) => {
+    if (!file) return;
+    setPhotoError(null);
+    setUploadingPhotoFor(parcelId);
+    try {
+      const presign = await api<{ url: string; key: string }>(
+        `${base}/parcels/${parcelId}/photos/presign`,
+        { method: 'POST' },
+      );
+      const buf = await file.arrayBuffer();
+      const put = await fetch(presign.url, {
+        method: 'PUT',
+        body: buf,
+        headers: { 'content-type': file.type || 'image/jpeg' },
+      });
+      if (!put.ok) throw new Error(`Échec de l'envoi (${put.status})`);
+      await api(`${base}/parcels/${parcelId}/photos`, {
+        method: 'POST',
+        body: {
+          storageKey: presign.key,
+          sha256: await sha256Hex(buf),
+          bytes: buf.byteLength,
+          mimeType: file.type || 'image/jpeg',
+          isPrimary: true,
+        },
+      });
+      void qc.invalidateQueries({ queryKey: ['staff-supplier-shipment', supplierId, id] });
+    } catch (e) {
+      setPhotoError(e);
+    } finally {
+      setUploadingPhotoFor(null);
+    }
+  };
 
   const s = detail.data;
   const isOpen = s?.status === 'OUVERTE';
@@ -116,6 +166,7 @@ function ShipmentDetailModal({
                 <th>Ville</th>
                 <th>Poids</th>
                 <th>Montant</th>
+                <th>Photo</th>
                 {isOpen && <th />}
               </tr>
             </thead>
@@ -134,6 +185,31 @@ function ShipmentDetailModal({
                   <td>
                     {p.amountDue} {p.currency}
                   </td>
+                  <td>
+                    {p.hasPhoto ? (
+                      <Pill kind="ok">✔ photo</Pill>
+                    ) : (
+                      <>
+                        <input
+                          ref={(el) => {
+                            fileInputs.current[p.id] = el;
+                          }}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          style={{ display: 'none' }}
+                          onChange={(e) => void uploadPhoto(p.id, e.target.files?.[0])}
+                        />
+                        <button
+                          className="btn ghost"
+                          type="button"
+                          disabled={uploadingPhotoFor === p.id}
+                          onClick={() => fileInputs.current[p.id]?.click()}
+                        >
+                          {uploadingPhotoFor === p.id ? 'Envoi…' : '+ Photo'}
+                        </button>
+                      </>
+                    )}
+                  </td>
                   {isOpen && (
                     <td>
                       <button className="btn ghost" onClick={() => removeParcel.mutate(p.id)}>
@@ -145,13 +221,14 @@ function ShipmentDetailModal({
               ))}
               {s.parcels.length === 0 && (
                 <tr>
-                  <td colSpan={isOpen ? 6 : 5} className="muted">
+                  <td colSpan={isOpen ? 7 : 6} className="muted">
                     Aucun colis pour l'instant.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+          <ErrorText error={photoError} />
 
           {isOpen && (
             <form
@@ -189,14 +266,28 @@ function ShipmentDetailModal({
                 onChange={(e) => setWeightKg(e.target.value)}
                 required
               />
-              <input
-                placeholder={`Montant (${s.currency})`}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-              />
-              <button className="btn primary" type="submit" disabled={addParcel.isPending}>
-                + Ajouter ce colis
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <div style={{ gridColumn: '1 / -1', fontSize: 13 }} className="muted">
+                {preview.isFetching
+                  ? 'Calcul du tarif…'
+                  : preview.data
+                    ? `Tarif : ${preview.data.pricePerKg} ${preview.data.tariffCurrency}/kg · Montant estimé : ${preview.data.amount} ${preview.data.currency}`
+                    : preview.error
+                      ? "Tarif indisponible pour cette destination — vérifiez la configuration."
+                      : 'Choisissez la ville et le poids pour voir le montant.'}
+              </div>
+              <button
+                className="btn primary"
+                type="submit"
+                disabled={addParcel.isPending || !preview.data}
+              >
+                + Ajouter ce colis (facturé automatiquement, photo ensuite)
               </button>
             </form>
           )}
