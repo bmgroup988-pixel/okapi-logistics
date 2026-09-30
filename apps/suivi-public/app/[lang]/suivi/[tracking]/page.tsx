@@ -5,6 +5,16 @@ import { fetchTracking } from '../../../../lib/api';
 
 const ORDER = ['ENREGISTRE', 'EN_TRANSIT', 'ARRIVE', 'LIVRE'];
 
+const STATUS_PILL_CLASS: Record<string, string> = {
+  ENREGISTRE: 'st-enregistre',
+  EN_TRANSIT: 'st-transit',
+  HANDED_TO_PARTNER: 'st-transit',
+  ARRIVE: 'st-arrive',
+  LIVRE: 'st-livre',
+  ANNULE: 'st-annule',
+  RETOURNE: 'st-retourne',
+};
+
 export async function generateMetadata({
   params,
 }: {
@@ -97,11 +107,13 @@ export default async function TrackingPage({
         {t.parcel} {data.trackingNumber}
       </div>
       <h1 style={{ marginTop: 8 }}>
-        <span className="pill status">● {t.steps[data.status] ?? data.status}</span>
+        <span className={`pill status ${STATUS_PILL_CLASS[data.status] ?? ''}`}>
+          ● {t.steps[data.status] ?? data.status}
+        </span>
       </h1>
 
       {data.status === 'ANNULE' ? (
-        <p className="card" style={{ color: 'var(--warn)' }}>
+        <p className="card" style={{ color: 'var(--err)' }}>
           {t.cancelledNote}
         </p>
       ) : data.status === 'RETOURNE' ? (

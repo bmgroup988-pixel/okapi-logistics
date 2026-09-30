@@ -65,6 +65,18 @@ export class StorageService {
     }
   }
 
+  /**
+   * URL publique STABLE (jamais expirée, non signée) — réservée aux objets
+   * placés sous un préfixe rendu publiquement lisible côté MinIO/S3 (voir
+   * `mc anonymous set download .../branding` dans docker-compose). À ne
+   * jamais utiliser pour des documents privés (photos colis, factures) :
+   * eux passent par `presignGet`, signé et à durée limitée.
+   */
+  publicUrl(key: string): string {
+    const o = this.opts();
+    return `${o.endpoint}/${o.bucket}/${key}`;
+  }
+
   presignGet(key: string, scope: 'internal' | 'client' = 'internal'): { url: string; expiresIn: number } {
     const o = this.opts();
     const expiresIn =

@@ -10,6 +10,7 @@
   --mute: #6a6976;
   --ok: #1f9d57;
   --warn: #c07700;
+  --err: #c0392b;
   --pending: #8a8a94;
 }
 
@@ -316,10 +317,15 @@ a.primary:hover {
   border-radius: 999px;
 }
 
-.pill.status {
-  background: color-mix(in srgb, var(--turquoise) 16%, transparent);
-  color: var(--turquoise);
-}
+/* Une couleur par statut — repère visuel rapide, y compris pour un client
+   qui ne lit pas le libellé (EF-SUI, demande produit 2026-09-30). */
+.pill.status { background: color-mix(in srgb, var(--turquoise) 16%, transparent); color: var(--turquoise); }
+.pill.status.st-enregistre { background: color-mix(in srgb, var(--turquoise) 16%, transparent); color: var(--turquoise); }
+.pill.status.st-transit { background: color-mix(in srgb, var(--orange) 16%, transparent); color: var(--orange); }
+.pill.status.st-arrive { background: color-mix(in srgb, var(--navy) 14%, transparent); color: var(--navy); }
+.pill.status.st-livre { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
+.pill.status.st-annule { background: color-mix(in srgb, var(--err) 14%, transparent); color: var(--err); }
+.pill.status.st-retourne { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
 
 .pill.paid {
   background: color-mix(in srgb, var(--ok) 14%, transparent);

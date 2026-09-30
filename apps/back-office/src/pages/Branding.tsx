@@ -50,7 +50,10 @@ const LABELS: Record<string, string> = {
   'footer.slogan.ln': 'Slogan — Lingála',
 };
 
-const MAX_LOGO_BYTES = 400 * 1024;
+// Stocké en objet (pas en base64 dans le réglage depuis le 2026-09-30) —
+// une limite plus généreuse n'alourdit plus chaque page, juste le confort
+// visuel (un fichier trop lourd reste inutile pour un logo).
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
 type Values = Record<string, string>;
 type SetValues = React.Dispatch<React.SetStateAction<Values>>;
@@ -87,13 +90,28 @@ function TextField({ k, values, setValues }: { k: string; values: Values; setVal
   );
 }
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+const EXT_BY_MIME: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/svg+xml': 'svg',
+};
+
+/**
+ * Upload direct vers le stockage objet (même schéma que les photos de
+ * colis) — le logo n'est plus jamais encodé en base64 ni stocké tel quel
+ * dans le réglage : ça alourdissait chaque page de plusieurs centaines de
+ * Ko, sur back-office ET le site public (incident du 2026-09-30).
+ */
+async function uploadLogo(file: File): Promise<string> {
+  const ext = EXT_BY_MIME[file.type] ?? 'png';
+  const { uploadUrl, publicUrl } = await api<{ uploadUrl: string; publicUrl: string }>(
+    '/admin/settings/branding/logo-presign',
+    { method: 'POST', body: { ext } },
+  );
+  const res = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'content-type': file.type } });
+  if (!res.ok) throw new Error(`Échec de l'envoi du logo (${res.status})`);
+  return publicUrl;
 }
 
 export function Branding() {
@@ -137,8 +155,12 @@ export function Branding() {
       setLogoError(`Fichier trop volumineux (${Math.round(file.size / 1024)} Ko) — 400 Ko max.`);
       return;
     }
-    const dataUrl = await fileToDataUrl(file);
-    setValues((v) => ({ ...v, 'branding.logoUrl': dataUrl }));
+    try {
+      const publicUrl = await uploadLogo(file);
+      setValues((v) => ({ ...v, 'branding.logoUrl': publicUrl }));
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : "Échec de l'envoi du logo.");
+    }
   };
 
   if (settings.isLoading) return <Loading />;
@@ -174,7 +196,7 @@ export function Branding() {
               onChange={(e) => void onLogoPick(e.target.files?.[0])}
             />
             <p className="muted" style={{ fontSize: 12, margin: '6px 0 0' }}>
-              PNG, JPEG, WebP ou SVG — 400 Ko max, idéalement carré (ex. 512×512 px) pour un rendu net
+              PNG, JPEG, WebP ou SVG — 2 Mo max, idéalement carré (ex. 512×512 px) pour un rendu net
               partout où il est réduit. Remplace le logo par défaut partout (back-office, connexion, site
               public) ainsi que l'icône d'onglet du navigateur — quelques secondes après
               l'enregistrement.
