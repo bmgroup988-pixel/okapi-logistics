@@ -2,8 +2,10 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, Req }
 import {
   groupageAddParcelSchema,
   groupageCreateSchema,
+  parcelTransitionSchema,
   type GroupageAddParcelInput,
   type GroupageCreateInput,
+  type ParcelTransitionInput,
 } from '@okapi/shared';
 import type { Request } from 'express';
 import type { CurrentUser as CurrentUserType } from '../auth/current-user';
@@ -60,6 +62,16 @@ export class GroupagesController {
     @Req() req: Request,
   ) {
     return this.groupages.removeParcel(id, parcelId, user, req.requestId);
+  }
+
+  @Post(':id/transition')
+  transitionAll(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(parcelTransitionSchema)) body: ParcelTransitionInput,
+    @CurrentUser() user: CurrentUserType,
+    @Req() req: Request,
+  ) {
+    return this.groupages.transitionAll(id, body, user, req.requestId);
   }
 
   @Post(':id/close')

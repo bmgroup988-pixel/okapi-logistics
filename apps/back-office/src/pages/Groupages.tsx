@@ -51,6 +51,101 @@ function groupageStatusKind(s: string): string {
   return s === 'CLOTURE' ? 'ok' : s === 'ANNULE' ? 'err' : 'info';
 }
 
+const BULK_STATUS_OPTIONS = [
+  { value: 'EN_TRANSIT', label: 'En transit (nouveau point de passage)' },
+  { value: 'ARRIVE', label: 'Arrivé' },
+  { value: 'LIVRE', label: 'Livré' },
+  { value: 'RETOURNE', label: 'Retourné' },
+];
+
+/**
+ * Change le statut de tous les colis du groupage en une fois — une
+ * transition par colis (mêmes règles que depuis la fiche colis), pas un
+ * statut propre au groupage. Un colis déjà incompatible (ex. livré à part)
+ * est simplement ignoré, sans bloquer les autres.
+ */
+function BulkTransitionModal({ groupageId, onClose, onDone }: { groupageId: string; onClose: () => void; onDone: () => void }) {
+  const [to, setTo] = useState('EN_TRANSIT');
+  const [locationLabel, setLocationLabel] = useState('');
+  const [note, setNote] = useState('');
+  const [result, setResult] = useState<{ succeeded: string[]; failed: Array<{ trackingNumber: string; reason: string }> } | null>(null);
+  const [error, setError] = useState<unknown>(null);
+
+  const run = useMutation({
+    mutationFn: () =>
+      api<{ succeeded: string[]; failed: Array<{ trackingNumber: string; reason: string }> }>(
+        `/groupages/${groupageId}/transition`,
+        { method: 'POST', body: { to, locationLabel: locationLabel || undefined, note: note || undefined, visibleToClient: true } },
+      ),
+    onSuccess: (r) => {
+      setResult(r);
+      setError(null);
+      onDone();
+    },
+    onError: setError,
+  });
+
+  return (
+    <Modal title="Changer le statut de tous les colis du groupage" onClose={onClose}>
+      {result ? (
+        <>
+          <p style={{ color: 'var(--ok)' }}>{result.succeeded.length} colis passés à « {to} ».</p>
+          {result.failed.length > 0 && (
+            <>
+              <p style={{ color: 'var(--err)' }}>{result.failed.length} colis non modifiés :</p>
+              <ul style={{ fontSize: 13 }}>
+                {result.failed.map((f) => (
+                  <li key={f.trackingNumber}>
+                    <span className="mono">{f.trackingNumber}</span> — {f.reason}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <button className="btn primary" onClick={onClose}>
+            Fermer
+          </button>
+        </>
+      ) : (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            run.mutate();
+          }}
+          style={{ display: 'grid', gap: 8 }}
+        >
+          <div className="field">
+            <label>Nouveau statut *</label>
+            <select value={to} onChange={(e) => setTo(e.target.value)}>
+              {BULK_STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>Lieu / pays de transit (optionnel)</label>
+            <input value={locationLabel} onChange={(e) => setLocationLabel(e.target.value)} placeholder="Ex. Douala, Cameroun" />
+          </div>
+          <div className="field">
+            <label>Note (optionnel)</label>
+            <input value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <p className="muted" style={{ fontSize: 12 }}>
+            S'applique à chaque colis du groupage individuellement — un colis déjà à un autre
+            stade (ex. livré séparément) sera simplement ignoré.
+          </p>
+          <ErrorText error={error} />
+          <button className="btn primary" type="submit" disabled={run.isPending}>
+            Appliquer à tous les colis
+          </button>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
 /**
  * Champ de recherche + suggestions pour choisir un colis à ajouter à un
  * groupage — tape le code complet, ou juste les derniers chiffres et la
@@ -246,6 +341,7 @@ export function GroupageDetail() {
   const qc = useQueryClient();
   const [selectedParcel, setSelectedParcel] = useState<AvailableParcel | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [bulkTransitionOpen, setBulkTransitionOpen] = useState(false);
 
   const groupage = useQuery({
     queryKey: ['groupage', id],
@@ -301,6 +397,11 @@ export function GroupageDetail() {
         </h1>
         <Pill kind={groupageStatusKind(g.status)}>{g.status}</Pill>
         <span className="spacer" />
+        {g.parcels.length > 0 && (
+          <button className="btn" onClick={() => setBulkTransitionOpen(true)}>
+            Changer le statut des colis
+          </button>
+        )}
         {isOpen && (
           <button className="btn" onClick={() => close.mutate()} disabled={close.isPending}>
             Clôturer
@@ -385,6 +486,14 @@ export function GroupageDetail() {
           </tbody>
         </table>
       </div>
+
+      {bulkTransitionOpen && (
+        <BulkTransitionModal
+          groupageId={id}
+          onClose={() => setBulkTransitionOpen(false)}
+          onDone={refresh}
+        />
+      )}
     </div>
   );
 }

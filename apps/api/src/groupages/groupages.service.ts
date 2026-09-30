@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   API_ERROR_CODES,
   composeGroupageCode,
@@ -6,9 +6,11 @@ import {
   trackingPeriodKey,
   type GroupageAddParcelInput,
   type GroupageCreateInput,
+  type ParcelTransitionInput,
 } from '@okapi/shared';
 import { AuditService } from '../audit/audit.service';
 import type { CurrentUser } from '../auth/current-user';
+import { ParcelsService } from '../parcels/parcels.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SequenceService } from '../sequences/sequence.service';
 
@@ -27,6 +29,7 @@ export class GroupagesService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly sequences: SequenceService,
+    private readonly parcels: ParcelsService,
   ) {}
 
   async list(user: CurrentUser, status?: string) {
@@ -213,6 +216,59 @@ export class GroupagesService {
       after: { status: 'CLOTURE' },
     });
     return toGroupageDto(updated);
+  }
+
+  /**
+   * Change le statut de TOUS les colis du groupage en une fois (ex. « le
+   * camion est parti » → tous les colis passent En transit) — une
+   * transition individuelle par colis (ParcelsService.transition, mêmes
+   * règles/notifications/audit que depuis la fiche colis), pas un statut
+   * propre au groupage : le groupage reste un simple regroupement de suivi
+   * (décision produit 2026-09-30). Un colis déjà incompatible avec la
+   * transition (ex. déjà livré séparément) est ignoré, pas bloquant pour
+   * les autres — le détail est renvoyé pour affichage.
+   */
+  async transitionAll(id: string, input: ParcelTransitionInput, user: CurrentUser, requestId?: string | null) {
+    const groupage = await this.prisma.groupage.findUnique({ where: { id } });
+    if (!groupage) {
+      throw new NotFoundException({ error: { code: API_ERROR_CODES.NOT_FOUND, message: 'Groupage introuvable' } });
+    }
+    const parcels = await this.prisma.parcel.findMany({
+      where: { groupageId: id },
+      select: { id: true, trackingNumber: true },
+    });
+
+    const succeeded: string[] = [];
+    const failed: Array<{ trackingNumber: string; reason: string }> = [];
+    for (const p of parcels) {
+      try {
+        await this.parcels.transition(p.id, input, user, requestId);
+        succeeded.push(p.trackingNumber);
+      } catch (e) {
+        let reason = 'erreur inconnue';
+        if (e instanceof HttpException) {
+          const payload = e.getResponse();
+          reason =
+            typeof payload === 'object' && payload !== null && 'error' in payload
+              ? ((payload as { error: { message?: string } }).error.message ?? e.message)
+              : e.message;
+        } else if (e instanceof Error) {
+          reason = e.message;
+        }
+        failed.push({ trackingNumber: p.trackingNumber, reason });
+      }
+    }
+
+    await this.audit.record({
+      action: 'UPDATE',
+      entityType: 'groupage',
+      entityId: id,
+      actorUserId: user.id,
+      requestId,
+      after: { bulkTransitionTo: input.to, succeeded: succeeded.length, failed: failed.length },
+    });
+
+    return { to: input.to, succeeded, failed };
   }
 
   private async requireOpenGroupage(id: string) {
