@@ -46,7 +46,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & push — API
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/api/Dockerfile
@@ -54,7 +54,7 @@ jobs:
           tags: ${{ env.IMAGE_PREFIX }}-api:latest,${{ env.IMAGE_PREFIX }}-api:${{ env.DEPLOY_SHA }}
 
       - name: Build & push — Back-office
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/back-office/Dockerfile
@@ -64,7 +64,7 @@ jobs:
           tags: ${{ env.IMAGE_PREFIX }}-back-office:latest,${{ env.IMAGE_PREFIX }}-back-office:${{ env.DEPLOY_SHA }}
 
       - name: Build & push — Suivi public
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/suivi-public/Dockerfile
